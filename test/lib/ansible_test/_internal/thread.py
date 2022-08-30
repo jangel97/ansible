@@ -1,6 +1,7 @@
 """Python threading tools."""
 from __future__ import annotations
 
+import collections.abc as c
 import functools
 import sys
 import threading
@@ -13,9 +14,9 @@ TCallable = t.TypeVar('TCallable', bound=t.Callable[..., t.Any])
 
 class WrappedThread(threading.Thread):
     """Wrapper around Thread which captures results and exceptions."""
-    def __init__(self, action):  # type: (t.Callable[[], t.Any]) -> None
+    def __init__(self, action: c.Callable[[], t.Any]) -> None:
         super().__init__()
-        self._result = queue.Queue()  # type: queue.Queue[t.Any]
+        self._result: queue.Queue[t.Any] = queue.Queue()
         self.action = action
         self.result = None
 
@@ -48,7 +49,7 @@ class WrappedThread(threading.Thread):
         return result
 
 
-def mutex(func):  # type: (TCallable) -> TCallable
+def mutex(func: TCallable) -> TCallable:
     """Enforce exclusive access on a decorated function."""
     lock = threading.Lock()
 

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import os
-import typing as t
 
 from . import (
     SourceProvider,
@@ -14,11 +13,11 @@ class InstalledSource(SourceProvider):
     sequence = 0  # disable automatic detection
 
     @staticmethod
-    def is_content_root(path):  # type: (str) -> bool
+    def is_content_root(path: str) -> bool:
         """Return True if the given path is a content root for this provider."""
         return False
 
-    def get_paths(self, path):  # type: (str) -> t.List[str]
+    def get_paths(self, path: str) -> list[str]:
         """Return the list of available content paths under the given path."""
         paths = []
 

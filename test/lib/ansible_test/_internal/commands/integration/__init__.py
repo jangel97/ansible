@@ -1,6 +1,7 @@
 """Ansible integration test infrastructure."""
 from __future__ import annotations
 
+import collections.abc as c
 import contextlib
 import datetime
 import json
@@ -130,11 +131,11 @@ from .coverage import (
 THostProfile = t.TypeVar('THostProfile', bound=HostProfile)
 
 
-def generate_dependency_map(integration_targets):  # type: (t.List[IntegrationTarget]) -> t.Dict[str, t.Set[IntegrationTarget]]
+def generate_dependency_map(integration_targets: list[IntegrationTarget]) -> dict[str, set[IntegrationTarget]]:
     """Analyze the given list of integration test targets and return a dictionary expressing target names and the targets on which they depend."""
     targets_dict = dict((target.name, target) for target in integration_targets)
     target_dependencies = analyze_integration_target_dependencies(integration_targets)
-    dependency_map = {}  # type: t.Dict[str, t.Set[IntegrationTarget]]
+    dependency_map: dict[str, set[IntegrationTarget]] = {}
 
     invalid_targets = set()
 
@@ -157,9 +158,9 @@ def generate_dependency_map(integration_targets):  # type: (t.List[IntegrationTa
     return dependency_map
 
 
-def get_files_needed(target_dependencies):  # type: (t.List[IntegrationTarget]) -> t.List[str]
+def get_files_needed(target_dependencies: list[IntegrationTarget]) -> list[str]:
     """Return a list of files needed by the given list of target dependencies."""
-    files_needed = []  # type: t.List[str]
+    files_needed: list[str] = []
 
     for target_dependency in target_dependencies:
         files_needed += target_dependency.needs_file
@@ -174,7 +175,7 @@ def get_files_needed(target_dependencies):  # type: (t.List[IntegrationTarget]) 
     return files_needed
 
 
-def check_inventory(args, inventory_path):  # type: (IntegrationConfig, str) -> None
+def check_inventory(args: IntegrationConfig, inventory_path: str) -> None:
     """Check the given inventory for issues."""
     if not isinstance(args.controller, OriginConfig):
         if os.path.exists(inventory_path):
@@ -196,23 +197,23 @@ def get_inventory_absolute_path(args: IntegrationConfig, target: InventoryConfig
     return path
 
 
-def get_inventory_relative_path(args):  # type: (IntegrationConfig) -> str
+def get_inventory_relative_path(args: IntegrationConfig) -> str:
     """Return the inventory path used for the given integration configuration relative to the content root."""
-    inventory_names = {
+    inventory_names: dict[t.Type[IntegrationConfig], str] = {
         PosixIntegrationConfig: 'inventory',
         WindowsIntegrationConfig: 'inventory.winrm',
         NetworkIntegrationConfig: 'inventory.networking',
-    }  # type: t.Dict[t.Type[IntegrationConfig], str]
+    }
 
     return os.path.join(data_context().content.integration_path, inventory_names[type(args)])
 
 
-def delegate_inventory(args, inventory_path_src):  # type: (IntegrationConfig, str) -> None
+def delegate_inventory(args: IntegrationConfig, inventory_path_src: str) -> None:
     """Make the given inventory available during delegation."""
     if isinstance(args, PosixIntegrationConfig):
         return
 
-    def inventory_callback(files):  # type: (t.List[t.Tuple[str, str]]) -> None
+    def inventory_callback(files: list[tuple[str, str]]) -> None:
         """
         Add the inventory file to the payload file list.
         This will preserve the file during delegation even if it is ignored or is outside the content and install roots.
@@ -238,10 +239,10 @@ def delegate_inventory(args, inventory_path_src):  # type: (IntegrationConfig, s
 
 @contextlib.contextmanager
 def integration_test_environment(
-        args,  # type: IntegrationConfig
-        target,  # type: IntegrationTarget
-        inventory_path_src,  # type: str
-):  # type: (...) -> t.Iterator[IntegrationEnvironment]
+        args: IntegrationConfig,
+        target: IntegrationTarget,
+        inventory_path_src: str,
+) -> c.Iterator[IntegrationEnvironment]:
     """Context manager that prepares the integration test environment and cleans it up."""
     ansible_config_src = args.get_ansible_config()
     ansible_config_relative = os.path.join(data_context().content.integration_path, '%s.cfg' % args.command)
@@ -341,10 +342,10 @@ def integration_test_environment(
 
 @contextlib.contextmanager
 def integration_test_config_file(
-        args,  # type: IntegrationConfig
-        env_config,  # type: CloudEnvironmentConfig
-        integration_dir,  # type: str
-):  # type: (...) -> t.Iterator[t.Optional[str]]
+        args: IntegrationConfig,
+        env_config: CloudEnvironmentConfig,
+        integration_dir: str,
+) -> c.Iterator[t.Optional[str]]:
     """Context manager that provides a config file for integration tests, if needed."""
     if not env_config:
         yield None
@@ -370,11 +371,11 @@ def integration_test_config_file(
 
 
 def create_inventory(
-        args,  # type: IntegrationConfig
-        host_state,  # type: HostState
-        inventory_path,  # type: str
-        target,  # type: IntegrationTarget
-):  # type: (...) -> None
+        args: IntegrationConfig,
+        host_state: HostState,
+        inventory_path: str,
+        target: IntegrationTarget,
+) -> None:
     """Create inventory."""
     if isinstance(args, PosixIntegrationConfig):
         if target.target_type == IntegrationTargetType.CONTROLLER:
@@ -396,13 +397,13 @@ def create_inventory(
 
 
 def command_integration_filtered(
-        args,  # type: IntegrationConfig
-        host_state,  # type: HostState
-        targets,  # type: t.Tuple[IntegrationTarget, ...]
-        all_targets,  # type: t.Tuple[IntegrationTarget, ...]
-        inventory_path,  # type: str
-        pre_target=None,  # type: t.Optional[t.Callable[[IntegrationTarget], None]]
-        post_target=None,  # type: t.Optional[t.Callable[[IntegrationTarget], None]]
+        args: IntegrationConfig,
+        host_state: HostState,
+        targets: tuple[IntegrationTarget, ...],
+        all_targets: tuple[IntegrationTarget, ...],
+        inventory_path: str,
+        pre_target: t.Optional[c.Callable[[IntegrationTarget], None]] = None,
+        post_target: t.Optional[c.Callable[[IntegrationTarget], None]] = None,
 ):
     """Run integration tests for the specified targets."""
     found = False
@@ -413,7 +414,7 @@ def command_integration_filtered(
     all_targets_dict = dict((target.name, target) for target in all_targets)
 
     setup_errors = []
-    setup_targets_executed = set()  # type: t.Set[str]
+    setup_targets_executed: set[str] = set()
 
     for target in all_targets:
         for setup_target in target.setup_once + target.setup_always:
@@ -571,12 +572,12 @@ def command_integration_filtered(
 
 
 def command_integration_script(
-        args,  # type: IntegrationConfig
-        host_state,  # type: HostState
-        target,  # type: IntegrationTarget
-        test_dir,  # type: str
-        inventory_path,  # type: str
-        coverage_manager,  # type: CoverageManager
+        args: IntegrationConfig,
+        host_state: HostState,
+        target: IntegrationTarget,
+        test_dir: str,
+        inventory_path: str,
+        coverage_manager: CoverageManager,
 ):
     """Run an integration test script."""
     display.info('Running %s integration test script' % target.name)
@@ -623,13 +624,13 @@ def command_integration_script(
 
 
 def command_integration_role(
-        args,  # type: IntegrationConfig
-        host_state,  # type: HostState
-        target,  # type: IntegrationTarget
-        start_at_task,  # type: t.Optional[str]
-        test_dir,  # type: str
-        inventory_path,  # type: str
-        coverage_manager,  # type: CoverageManager
+        args: IntegrationConfig,
+        host_state: HostState,
+        target: IntegrationTarget,
+        start_at_task: t.Optional[str],
+        test_dir: str,
+        inventory_path: str,
+        coverage_manager: CoverageManager,
 ):
     """Run an integration test role."""
     display.info('Running %s integration test role' % target.name)
@@ -742,15 +743,15 @@ def command_integration_role(
 
 
 def run_setup_targets(
-        args,  # type: IntegrationConfig
-        host_state,  # type: HostState
-        test_dir,  # type: str
-        target_names,  # type: t.Sequence[str]
-        targets_dict,  # type: t.Dict[str, IntegrationTarget]
-        targets_executed,  # type: t.Set[str]
-        inventory_path,  # type: str
-        coverage_manager,  # type: CoverageManager
-        always,  # type: bool
+        args: IntegrationConfig,
+        host_state: HostState,
+        test_dir: str,
+        target_names: c.Sequence[str],
+        targets_dict: dict[str, IntegrationTarget],
+        targets_executed: set[str],
+        inventory_path: str,
+        coverage_manager: CoverageManager,
+        always: bool,
 ):
     """Run setup targets."""
     for target_name in target_names:
@@ -773,14 +774,14 @@ def run_setup_targets(
 
 
 def integration_environment(
-        args,  # type: IntegrationConfig
-        target,  # type: IntegrationTarget
-        test_dir,  # type: str
-        inventory_path,  # type: str
-        ansible_config,  # type: t.Optional[str]
-        env_config,  # type: t.Optional[CloudEnvironmentConfig]
-        test_env,  # type: IntegrationEnvironment
-):  # type: (...) -> t.Dict[str, str]
+        args: IntegrationConfig,
+        target: IntegrationTarget,
+        test_dir: str,
+        inventory_path: str,
+        ansible_config: t.Optional[str],
+        env_config: t.Optional[CloudEnvironmentConfig],
+        test_env: IntegrationEnvironment,
+) -> dict[str, str]:
     """Return a dictionary of environment variables to use when running the given integration test target."""
     env = ansible_environment(args, ansible_config=ansible_config)
 
@@ -839,7 +840,7 @@ class IntegrationCache(CommonCache):
         return self.get('dependency_map', lambda: generate_dependency_map(self.integration_targets))
 
 
-def filter_profiles_for_target(args, profiles, target):  # type: (IntegrationConfig, t.List[THostProfile], IntegrationTarget) -> t.List[THostProfile]
+def filter_profiles_for_target(args: IntegrationConfig, profiles: list[THostProfile], target: IntegrationTarget) -> list[THostProfile]:
     """Return a list of profiles after applying target filters."""
     if target.target_type == IntegrationTargetType.CONTROLLER:
         profile_filter = get_target_filter(args, [args.controller], True)
@@ -853,7 +854,7 @@ def filter_profiles_for_target(args, profiles, target):  # type: (IntegrationCon
     return profiles
 
 
-def get_integration_filter(args, targets):  # type: (IntegrationConfig, t.List[IntegrationTarget]) -> t.Set[str]
+def get_integration_filter(args: IntegrationConfig, targets: list[IntegrationTarget]) -> set[str]:
     """Return a list of test targets to skip based on the host(s) that will be used to run the specified test targets."""
     invalid_targets = sorted(target.name for target in targets if target.target_type not in (IntegrationTargetType.CONTROLLER, IntegrationTargetType.TARGET))
 
@@ -881,7 +882,7 @@ If necessary, context can be controlled by adding entries to the "aliases" file 
         else:
             display.warning(f'Unable to determine context for the following test targets, they will be run on the target host: {", ".join(invalid_targets)}')
 
-    exclude = set()  # type: t.Set[str]
+    exclude: set[str] = set()
 
     controller_targets = [target for target in targets if target.target_type == IntegrationTargetType.CONTROLLER]
     target_targets = [target for target in targets if target.target_type == IntegrationTargetType.TARGET]
@@ -895,9 +896,9 @@ If necessary, context can be controlled by adding entries to the "aliases" file 
     return exclude
 
 
-def command_integration_filter(args,  # type: TIntegrationConfig
-                               targets,  # type: t.Iterable[TIntegrationTarget]
-                               ):  # type: (...) -> t.Tuple[HostState, t.Tuple[TIntegrationTarget, ...]]
+def command_integration_filter(args: TIntegrationConfig,
+                               targets: c.Iterable[TIntegrationTarget],
+                               ) -> tuple[HostState, tuple[TIntegrationTarget, ...]]:
     """Filter the given integration test targets."""
     targets = tuple(target for target in targets if 'hidden/' not in target.aliases)
     changes = get_changes_filter(args)
@@ -935,7 +936,7 @@ def command_integration_filter(args,  # type: TIntegrationConfig
     vars_file_src = os.path.join(data_context().content.root, data_context().content.integration_vars_path)
 
     if os.path.exists(vars_file_src):
-        def integration_config_callback(files):  # type: (t.List[t.Tuple[str, str]]) -> None
+        def integration_config_callback(files: list[tuple[str, str]]) -> None:
             """
             Add the integration config vars file to the payload file list.
             This will preserve the file during delegation even if the file is ignored by source control.
@@ -956,7 +957,7 @@ def command_integration_filter(args,  # type: TIntegrationConfig
     return host_state, internal_targets
 
 
-def requirements(args, host_state):  # type: (IntegrationConfig, HostState) -> None
+def requirements(args: IntegrationConfig, host_state: HostState) -> None:
     """Install requirements."""
     target_profile = host_state.target_profiles[0]
 

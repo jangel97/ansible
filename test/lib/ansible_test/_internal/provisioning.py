@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import atexit
+import collections.abc as c
 import dataclasses
 import functools
 import itertools
@@ -54,23 +55,23 @@ class PrimeContainers(ApplicationError):
 class HostState:
     """State of hosts and profiles to be passed to ansible-test during delegation."""
     controller_profile: ControllerHostProfile
-    target_profiles: t.List[HostProfile]
+    target_profiles: list[HostProfile]
 
     @property
-    def profiles(self):  # type: () -> t.List[HostProfile]
+    def profiles(self) -> list[HostProfile]:
         """Return all the profiles as a list."""
         return [t.cast(HostProfile, self.controller_profile)] + self.target_profiles
 
-    def serialize(self, path):  # type: (str) -> None
+    def serialize(self, path: str) -> None:
         """Serialize the host state to the given path."""
         with open_binary_file(path, 'wb') as state_file:
             pickle.dump(self, state_file)
 
     @staticmethod
-    def deserialize(args, path):  # type: (EnvironmentConfig, str) -> HostState
+    def deserialize(args: EnvironmentConfig, path: str) -> HostState:
         """Deserialize host state from the given args and path."""
         with open_binary_file(path) as state_file:
-            host_state = pickle.load(state_file)  # type: HostState
+            host_state: HostState = pickle.load(state_file)
 
         host_state.controller_profile.args = args
 
@@ -79,27 +80,27 @@ class HostState:
 
         return host_state
 
-    def get_controller_target_connections(self):  # type: () -> t.List[SshConnection]
+    def get_controller_target_connections(self) -> list[SshConnection]:
         """Return SSH connection(s) for accessing all target hosts from the controller."""
         return list(itertools.chain.from_iterable([target.get_controller_target_connections() for
                                                    target in self.target_profiles if isinstance(target, SshTargetHostProfile)]))
 
-    def targets(self, profile_type):  # type: (t.Type[THostProfile]) -> t.List[THostProfile]
+    def targets(self, profile_type: t.Type[THostProfile]) -> list[THostProfile]:
         """The list of target(s), verified to be of the specified type."""
         if not self.target_profiles:
             raise Exception('No target profiles found.')
 
         assert type_guard(self.target_profiles, profile_type)
 
-        return t.cast(t.List[THostProfile], self.target_profiles)
+        return t.cast(list[THostProfile], self.target_profiles)
 
 
 def prepare_profiles(
-        args,  # type: TEnvironmentConfig
-        targets_use_pypi=False,  # type: bool
-        skip_setup=False,  # type: bool
-        requirements=None,  # type: t.Optional[t.Callable[[TEnvironmentConfig, HostState], None]]
-):  # type: (...) -> HostState
+        args: TEnvironmentConfig,
+        targets_use_pypi: bool = False,
+        skip_setup: bool = False,
+        requirements: t.Optional[c.Callable[[TEnvironmentConfig, HostState], None]] = None,
+) -> HostState:
     """
     Create new profiles, or load existing ones, and return them.
     If a requirements callback was provided, it will be used before configuring hosts if delegation has already been performed.
@@ -123,7 +124,7 @@ def prepare_profiles(
 
         atexit.register(functools.partial(cleanup_profiles, host_state))
 
-        def provision(profile):  # type: (HostProfile) -> None
+        def provision(profile: HostProfile) -> None:
             """Provision the given profile."""
             profile.provision()
 
@@ -140,7 +141,7 @@ def prepare_profiles(
         if requirements:
             requirements(args, host_state)
 
-        def configure(profile):  # type: (HostProfile) -> None
+        def configure(profile: HostProfile) -> None:
             """Configure the given profile."""
             profile.wait()
 
@@ -152,7 +153,7 @@ def prepare_profiles(
     return host_state
 
 
-def check_controller_python(args, host_state):  # type: (EnvironmentConfig, HostState) -> None
+def check_controller_python(args: EnvironmentConfig, host_state: HostState) -> None:
     """Check the running environment to make sure it is what we expected."""
     sys_version = version_to_str(sys.version_info[:2])
     controller_python = host_state.controller_profile.python
@@ -168,13 +169,13 @@ def check_controller_python(args, host_state):  # type: (EnvironmentConfig, Host
     args.controller_python = controller_python
 
 
-def cleanup_profiles(host_state):  # type: (HostState) -> None
+def cleanup_profiles(host_state: HostState) -> None:
     """Cleanup provisioned hosts when exiting."""
     for profile in host_state.profiles:
         profile.deprovision()
 
 
-def dispatch_jobs(jobs):  # type: (t.List[t.Tuple[HostProfile, WrappedThread]]) -> None
+def dispatch_jobs(jobs: list[tuple[HostProfile, WrappedThread]]) -> None:
     """Run the given profile job threads and wait for them to complete."""
     for profile, thread in jobs:
         thread.daemon = True

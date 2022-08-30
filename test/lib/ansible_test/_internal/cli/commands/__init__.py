@@ -44,9 +44,9 @@ from .units import (
 
 
 def do_commands(
-        parent,  # type: argparse.ArgumentParser
-        completer,  # type: CompositeActionCompletionFinder
-):  # type: (...) -> None
+        parent: argparse.ArgumentParser,
+        completer: CompositeActionCompletionFinder,
+) -> None:
     """Command line parsing for all commands."""
     common = argparse.ArgumentParser(add_help=False)
 
@@ -227,7 +227,7 @@ def do_commands(
     do_units(subparsers, test, completer)
 
 
-def color(value):  # type: (str) -> bool
+def color(value: str) -> bool:
     """Strict converter for color option."""
     if value == 'yes':
         return True

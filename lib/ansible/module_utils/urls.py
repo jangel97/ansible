@@ -563,8 +563,8 @@ if hasattr(httplib, 'HTTPSConnection') and hasattr(urllib_request, 'HTTPSHandler
             if HAS_SSLCONTEXT or HAS_URLLIB3_PYOPENSSLCONTEXT:
                 self.sock = self.context.wrap_socket(sock, server_hostname=server_hostname)
             elif HAS_URLLIB3_SSL_WRAP_SOCKET:
-                self.sock = ssl_wrap_socket(sock, keyfile=self.key_file, cert_reqs=ssl.CERT_NONE, certfile=self.cert_file, ssl_version=PROTOCOL,
-                                            server_hostname=server_hostname)
+                self.sock = ssl_wrap_socket(sock, keyfile=self.key_file, cert_reqs=ssl.CERT_NONE,  # pylint: disable=used-before-assignment
+                                            certfile=self.cert_file, ssl_version=PROTOCOL, server_hostname=server_hostname)
             else:
                 self.sock = ssl.wrap_socket(sock, keyfile=self.key_file, certfile=self.cert_file, ssl_version=PROTOCOL)
 
@@ -1989,7 +1989,8 @@ def fetch_file(module, url, data=None, headers=None, method=None,
     '''
     # download file
     bufsize = 65536
-    file_name, file_ext = os.path.splitext(str(url.rsplit('/', 1)[1]))
+    parts = urlparse(url)
+    file_name, file_ext = os.path.splitext(os.path.basename(parts.path))
     fetch_temp_file = tempfile.NamedTemporaryFile(dir=module.tmpdir, prefix=file_name, suffix=file_ext, delete=False)
     module.add_cleanup_file(fetch_temp_file.name)
     try:

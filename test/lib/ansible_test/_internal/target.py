@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import collections
+import collections.abc as c
 import enum
 import os
 import re
@@ -33,7 +34,7 @@ from .data import (
 MODULE_EXTENSIONS = '.py', '.ps1'
 
 
-def find_target_completion(target_func, prefix, short):  # type: (t.Callable[[], t.Iterable[CompletionTarget]], str, bool) -> t.List[str]
+def find_target_completion(target_func: c.Callable[[], c.Iterable[CompletionTarget]], prefix: str, short: bool) -> list[str]:
     """Return a list of targets from the given target function which match the given prefix."""
     try:
         targets = target_func()
@@ -43,7 +44,7 @@ def find_target_completion(target_func, prefix, short):  # type: (t.Callable[[],
         return ['%s' % ex]
 
 
-def walk_completion_targets(targets, prefix, short=False):  # type: (t.Iterable[CompletionTarget], str, bool) -> t.Tuple[str, ...]
+def walk_completion_targets(targets: c.Iterable[CompletionTarget], prefix: str, short: bool = False) -> tuple[str, ...]:
     """Return a tuple of targets from the given target iterable which match the given prefix."""
     aliases = set(alias for target in targets for alias in target.aliases)
 
@@ -64,11 +65,11 @@ def walk_completion_targets(targets, prefix, short=False):  # type: (t.Iterable[
 
 
 def walk_internal_targets(
-        targets,  # type: t.Iterable[TCompletionTarget]
-        includes=None,  # type: t.Optional[t.List[str]]
-        excludes=None,  # type: t.Optional[t.List[str]]
-        requires=None,  # type: t.Optional[t.List[str]]
-):  # type: (...) -> t.Tuple[TCompletionTarget, ...]
+        targets: c.Iterable[TCompletionTarget],
+        includes: t.Optional[list[str]] = None,
+        excludes: t.Optional[list[str]] = None,
+        requires: t.Optional[list[str]] = None,
+) -> tuple[TCompletionTarget, ...]:
     """Return a tuple of matching completion targets."""
     targets = tuple(targets)
 
@@ -85,12 +86,12 @@ def walk_internal_targets(
     return tuple(sorted(internal_targets, key=lambda sort_target: sort_target.name))
 
 
-def filter_targets(targets,  # type: t.Iterable[TCompletionTarget]
-                   patterns,  # type: t.List[str]
-                   include=True,  # type: bool
-                   directories=True,  # type: bool
-                   errors=True,  # type: bool
-                   ):  # type: (...) -> t.Iterable[TCompletionTarget]
+def filter_targets(targets: c.Iterable[TCompletionTarget],
+                   patterns: list[str],
+                   include: bool = True,
+                   directories: bool = True,
+                   errors: bool = True,
+                   ) -> c.Iterable[TCompletionTarget]:
     """Iterate over the given targets and filter them based on the supplied arguments."""
     unmatched = set(patterns or ())
     compiled_patterns = dict((p, re.compile('^%s$' % p)) for p in patterns) if patterns else None
@@ -150,48 +151,48 @@ def walk_module_targets():
         yield target
 
 
-def walk_units_targets():  # type: () -> t.Iterable[TestTarget]
+def walk_units_targets() -> c.Iterable[TestTarget]:
     """Return an iterable of units targets."""
     return walk_test_targets(path=data_context().content.unit_path, module_path=data_context().content.unit_module_path, extensions=('.py',), prefix='test_')
 
 
-def walk_compile_targets(include_symlinks=True):  # type: (bool) -> t.Iterable[TestTarget]
+def walk_compile_targets(include_symlinks: bool = True) -> c.Iterable[TestTarget]:
     """Return an iterable of compile targets."""
     return walk_test_targets(module_path=data_context().content.module_path, extensions=('.py',), extra_dirs=('bin',), include_symlinks=include_symlinks)
 
 
-def walk_powershell_targets(include_symlinks=True):  # type: (bool) -> t.Iterable[TestTarget]
+def walk_powershell_targets(include_symlinks: bool = True) -> c.Iterable[TestTarget]:
     """Return an iterable of PowerShell targets."""
     return walk_test_targets(module_path=data_context().content.module_path, extensions=('.ps1', '.psm1'), include_symlinks=include_symlinks)
 
 
-def walk_sanity_targets():  # type: () -> t.Iterable[TestTarget]
+def walk_sanity_targets() -> c.Iterable[TestTarget]:
     """Return an iterable of sanity targets."""
     return walk_test_targets(module_path=data_context().content.module_path, include_symlinks=True, include_symlinked_directories=True)
 
 
-def walk_posix_integration_targets(include_hidden=False):  # type: (bool) -> t.Iterable[IntegrationTarget]
+def walk_posix_integration_targets(include_hidden: bool = False) -> c.Iterable[IntegrationTarget]:
     """Return an iterable of POSIX integration targets."""
     for target in walk_integration_targets():
         if 'posix/' in target.aliases or (include_hidden and 'hidden/posix/' in target.aliases):
             yield target
 
 
-def walk_network_integration_targets(include_hidden=False):  # type: (bool) -> t.Iterable[IntegrationTarget]
+def walk_network_integration_targets(include_hidden: bool = False) -> c.Iterable[IntegrationTarget]:
     """Return an iterable of network integration targets."""
     for target in walk_integration_targets():
         if 'network/' in target.aliases or (include_hidden and 'hidden/network/' in target.aliases):
             yield target
 
 
-def walk_windows_integration_targets(include_hidden=False):  # type: (bool) -> t.Iterable[IntegrationTarget]
+def walk_windows_integration_targets(include_hidden: bool = False) -> c.Iterable[IntegrationTarget]:
     """Return an iterable of windows integration targets."""
     for target in walk_integration_targets():
         if 'windows/' in target.aliases or (include_hidden and 'hidden/windows/' in target.aliases):
             yield target
 
 
-def walk_integration_targets():  # type: () -> t.Iterable[IntegrationTarget]
+def walk_integration_targets() -> c.Iterable[IntegrationTarget]:
     """Return an iterable of integration targets."""
     path = data_context().content.integration_targets_path
     modules = frozenset(target.module for target in walk_module_targets())
@@ -263,14 +264,14 @@ def load_integration_prefixes():
 
 
 def walk_test_targets(
-        path=None,  # type: t.Optional[str]
-        module_path=None,  # type: t.Optional[str]
-        extensions=None,  # type: t.Optional[t.Tuple[str, ...]]
-        prefix=None,  # type: t.Optional[str]
-        extra_dirs=None,  # type: t.Optional[t.Tuple[str, ...]]
-        include_symlinks=False,  # type: bool
-        include_symlinked_directories=False,  # type: bool
-):  # type: (...) -> t.Iterable[TestTarget]
+        path: t.Optional[str] = None,
+        module_path: t.Optional[str] = None,
+        extensions: t.Optional[tuple[str, ...]] = None,
+        prefix: t.Optional[str] = None,
+        extra_dirs: t.Optional[tuple[str, ...]] = None,
+        include_symlinks: bool = False,
+        include_symlinked_directories: bool = False,
+) -> c.Iterable[TestTarget]:
     """Iterate over available test targets."""
     if path:
         file_paths = data_context().content.walk_files(path, include_symlinked_directories=include_symlinked_directories)
@@ -309,7 +310,7 @@ def walk_test_targets(
         yield TestTarget(file_path, module_path, prefix, path, symlink)
 
 
-def analyze_integration_target_dependencies(integration_targets):  # type: (t.List[IntegrationTarget]) -> t.Dict[str, t.Set[str]]
+def analyze_integration_target_dependencies(integration_targets: list[IntegrationTarget]) -> dict[str, set[str]]:
     """Analyze the given list of integration test targets and return a dictionary expressing target names and the target names which depend on them."""
     real_target_root = os.path.realpath(data_context().content.integration_targets_path) + '/'
 
@@ -442,7 +443,7 @@ class CompletionTarget(metaclass=abc.ABCMeta):
 
 class DirectoryTarget(CompletionTarget):
     """Directory target."""
-    def __init__(self, path, modules):  # type: (str, t.Tuple[str, ...]) -> None
+    def __init__(self, path: str, modules: tuple[str, ...]) -> None:
         super().__init__()
 
         self.name = path
@@ -454,11 +455,11 @@ class TestTarget(CompletionTarget):
     """Generic test target."""
     def __init__(
             self,
-            path,  # type: str
-            module_path,  # type: t.Optional[str]
-            module_prefix,  # type: t.Optional[str]
-            base_path,  # type: str
-            symlink=None,  # type: t.Optional[bool]
+            path: str,
+            module_path: t.Optional[str],
+            module_prefix: t.Optional[str],
+            base_path: str,
+            symlink: t.Optional[bool] = None,
     ):
         super().__init__()
 
@@ -499,10 +500,10 @@ class IntegrationTargetType(enum.Enum):
     CONFLICT = enum.auto()
 
 
-def extract_plugin_references(name, aliases):  # type: (str, t.List[str]) -> t.List[t.Tuple[str, str]]
+def extract_plugin_references(name: str, aliases: list[str]) -> list[tuple[str, str]]:
     """Return a list of plugin references found in the given integration test target name and aliases."""
     plugins = content_plugins()
-    found = []  # type: t.List[t.Tuple[str, str]]
+    found: list[tuple[str, str]] = []
 
     for alias in [name] + aliases:
         plugin_type = 'modules'
@@ -524,7 +525,7 @@ def extract_plugin_references(name, aliases):  # type: (str, t.List[str]) -> t.L
     return found
 
 
-def categorize_integration_test(name, aliases, force_target):  # type: (str, t.List[str], bool) -> t.Tuple[IntegrationTargetType, IntegrationTargetType]
+def categorize_integration_test(name: str, aliases: list[str], force_target: bool) -> tuple[IntegrationTargetType, IntegrationTargetType]:
     """Return the integration test target types (used and actual) based on the given target name and aliases."""
     context_controller = f'context/{IntegrationTargetType.CONTROLLER.name.lower()}' in aliases
     context_target = f'context/{IntegrationTargetType.TARGET.name.lower()}' in aliases or force_target
@@ -566,7 +567,7 @@ class IntegrationTarget(CompletionTarget):
         'skip',
     )))
 
-    def __init__(self, path, modules, prefixes):  # type: (str, t.FrozenSet[str], t.Dict[str, str]) -> None
+    def __init__(self, path: str, modules: frozenset[str], prefixes: dict[str, str]) -> None:
         super().__init__()
 
         self.relative_path = os.path.relpath(path, data_context().content.integration_targets_path)
@@ -610,6 +611,9 @@ class IntegrationTarget(CompletionTarget):
         groups = [self.type]
         groups += [a for a in static_aliases if a not in modules]
         groups += ['module/%s' % m for m in self.modules]
+
+        if data_context().content.is_ansible and (self.name == 'ansible-test' or self.name.startswith('ansible-test-')):
+            groups.append('ansible-test')
 
         if not self.modules:
             groups.append('non_module')
@@ -710,7 +714,7 @@ class IntegrationTarget(CompletionTarget):
 
 class TargetPatternsNotMatched(ApplicationError):
     """One or more targets were not matched when a match was required."""
-    def __init__(self, patterns):  # type: (t.Set[str]) -> None
+    def __init__(self, patterns: set[str]) -> None:
         self.patterns = sorted(patterns)
 
         if len(patterns) > 1:

@@ -6,15 +6,16 @@ Distributing collections
 
 A collection is a distribution format for Ansible content. A typical collection contains modules and other plugins that address a set of related use cases. For example, a collection might automate administering a particular database. A collection can also contain roles and playbooks.
 
-To distribute your collection and allow others to use it, you can publish your collection on one or more distribution servers. Distribution servers include:
+To distribute your collection and allow others to use it, you can publish your collection on one or more :term:`distribution server`. Distribution servers include:
 
-================================= ========================================================
+================================= ===================================================================
 Distribution server               Collections accepted
-================================= ========================================================
+================================= ===================================================================
 Ansible Galaxy                    All collections
-Red Hat Automation Hub            Only collections certified by Red Hat
+:term:`Pulp 3 Galaxy`             All collections, supports signed collections
+Red Hat Automation Hub            Only collections certified by Red Hat, supports signed collections
 Privately hosted Automation Hub   Collections authorized by the owners
-================================= ========================================================
+================================= ===================================================================
 
 Distributing collections involves four major steps:
 
@@ -145,10 +146,19 @@ This command builds a tarball of the collection in the current directory, which 
 
 You can upload your tarball to one or more distribution servers. You can also distribute your collection locally by copying the tarball to install your collection directly on target systems.
 
+
 .. _ignoring_files_and_folders_collections:
 
 Ignoring files and folders
 --------------------------
+
+You can exclude files from your collection with either  :ref:`build_ignore <build_ignore>` or  :ref:`manifest_directives`. For more information on the :file:`galaxy.yml` file, see :ref:`collections_galaxy_meta`.
+
+
+.. _build_ignore:
+
+Include all, with explicit ignores
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 By default the build step includes all the files in the collection directory in the tarball except for the following:
 
@@ -174,10 +184,104 @@ For example, to exclude the :file:`sensitive` folder within the ``playbooks`` fo
      - playbooks/sensitive
      - '*.tar.gz'
 
-For more information on the :file:`galaxy.yml` file, see :ref:`collections_galaxy_meta`.
-
 .. note::
      The ``build_ignore`` feature is only supported with ``ansible-galaxy collection build`` in Ansible 2.10 or newer.
+
+
+.. _manifest_directives:
+
+Manifest Directives
+^^^^^^^^^^^^^^^^^^^
+
+.. versionadded:: 2.14
+
+The :file:`galaxy.yml` file supports manifest directives that are historically used in Python packaging, as described in `MANIFEST.in commands <https://packaging.python.org/en/latest/guides/using-manifest-in/#manifest-in-commands>`_.
+
+.. note::
+   The use of ``manifest`` requires installing the optional ``distlib`` Python dependency.
+
+.. note::
+   The ``manifest`` feature is only supported with ``ansible-galaxy collection build`` in ``ansible-core`` 2.14 or newer, and is mutually exclusive with ``build_ignore``.
+
+For example, to exclude the :file:`sensitive` folder within the ``playbooks`` folder as well as any ``.tar.gz`` archives, set the following in your :file:`galaxy.yml` file:
+
+.. code-block:: yaml
+
+   manifest:
+     directives:
+       - recursive-exclude playbooks/sensitive **
+       - global-exclude *.tar.gz
+
+By default, the ``MANIFEST.in`` style directives would exclude all files by default, but there are default directives in place. Those default directives are described below. To see the directives in use during build, pass ``-vvv`` with the ``ansible-galaxy collection build`` command.
+
+.. code-block::
+
+   include meta/*.yml
+   include *.txt *.md *.rst COPYING LICENSE
+   recursive-include tests **
+   recursive-include docs **.rst **.yml **.yaml **.json **.j2 **.txt
+   recursive-include roles **.yml **.yaml **.json **.j2
+   recursive-include playbooks **.yml **.yaml **.json
+   recursive-include changelogs **.yml **.yaml
+   recursive-include plugins */**.py
+   recursive-include plugins/become **.yml **.yaml
+   recursive-include plugins/cache **.yml **.yaml
+   recursive-include plugins/callback **.yml **.yaml
+   recursive-include plugins/cliconf **.yml **.yaml
+   recursive-include plugins/connection **.yml **.yaml
+   recursive-include plugins/filter **.yml **.yaml
+   recursive-include plugins/httpapi **.yml **.yaml
+   recursive-include plugins/inventory **.yml **.yaml
+   recursive-include plugins/lookup **.yml **.yaml
+   recursive-include plugins/netconf **.yml **.yaml
+   recursive-include plugins/shell **.yml **.yaml
+   recursive-include plugins/strategy **.yml **.yaml
+   recursive-include plugins/test **.yml **.yaml
+   recursive-include plugins/vars **.yml **.yaml
+   recursive-include plugins/modules **.ps1 **.yml **.yaml
+   recursive-include plugins/module_utils **.ps1 **.psm1 **.cs
+   # manifest.directives from galaxy.yml inserted here
+   exclude galaxy.yml galaxy.yaml MANIFEST.json FILES.json <namespace>-<name>-*.tar.gz
+   recursive-exclude tests/output **
+   global-exclude /.* /__pycache__
+
+.. note::
+   ``<namespace>-<name>-*.tar.gz`` is expanded with the actual ``namespace`` and ``name``.
+
+The ``manifest.directives`` supplied in :file:`galaxy.yml` are inserted after the default includes and before the default excludes.
+
+To enable the use of manifest directives without supplying your own, insert either ``manifest: {}`` or ``manifest: null`` in the :file:`galaxy.yml` file and remove any use of ``build_ignore``.
+
+If the default manifest directives do not meet your needs, you can set ``manifest.omit_default_directives`` to a value of ``true`` in :file:`galaxy.yml`. You then must specify a  full compliment of manifest directives in :file:`galaxy.yml`. The defaults documented above are a good starting point.
+
+Below is an example where the default directives are not included.
+
+.. code-block:: yaml
+
+   manifest:
+     directives:
+       - include meta/runtime.yml
+       - include README.md LICENSE
+       - recursive-include plugins */**.py
+       - exclude galaxy.yml MANIFEST.json FILES.json <namespace>-<name>-*.tar.gz
+       - recursive-exclude tests/output **
+     omit_default_directives: true
+
+
+.. _signing_collections:
+
+Signing a collection
+--------------------------
+
+You can include a GnuPG signature with your collection on a :term:`Pulp 3 Galaxy` server. See `Enabling collection signing <https://galaxyng.netlify.app/config/collection_signing/>`_ for details.
+
+You can manually generate detached signatures for a collection using the ``gpg`` CLI using the following step. This step assume you have generated a GPG private key, but do not cover this process.
+
+.. code-block:: bash
+
+   ansible-galaxy collection build
+   tar -Oxzf namespace-name-1.0.0.tar.gz MANIFEST.json | gpg --output namespace-name-1.0.0.asc --detach-sign --armor --local-user email@example.com -
+
 
 .. _trying_collection_locally:
 

@@ -35,19 +35,19 @@ options:
               least one of the patterns specified. Multiple patterns can be specified using a list.
             - The pattern is matched against the file base name, excluding the directory.
             - When using regexen, the pattern MUST match the ENTIRE file name, not just parts of it. So
-              if you are looking to match all files ending in .default, you'd need to use '.*\.default'
-              as a regexp and not just '\.default'.
+              if you are looking to match all files ending in .default, you'd need to use C(.*\.default)
+              as a regexp and not just C(\.default).
             - This parameter expects a list, which can be either comma separated or YAML. If any of the
               patterns contain a comma, make sure to put them in a list to avoid splitting the patterns
               in undesirable ways.
-            - Defaults to '*' when C(use_regex=False), or '.*' when C(use_regex=True).
+            - Defaults to C(*) when I(use_regex=False), or C(.*) when I(use_regex=True).
         type: list
         aliases: [ pattern ]
         elements: str
     excludes:
         description:
-            - One or more (shell or regex) patterns, which type is controlled by C(use_regex) option.
-            - Items whose basenames match an C(excludes) pattern are culled from C(patterns) matches.
+            - One or more (shell or regex) patterns, which type is controlled by I(use_regex) option.
+            - Items whose basenames match an I(excludes) pattern are culled from I(patterns) matches.
               Multiple patterns can be specified using a list.
         type: list
         aliases: [ exclude ]
@@ -291,9 +291,9 @@ def agefilter(st, now, age, timestamp):
     '''filter files older than age'''
     if age is None:
         return True
-    elif age >= 0 and now - st.__getattribute__("st_%s" % timestamp) >= abs(age):
+    elif age >= 0 and now - getattr(st, "st_%s" % timestamp) >= abs(age):
         return True
-    elif age < 0 and now - st.__getattribute__("st_%s" % timestamp) <= abs(age):
+    elif age < 0 and now - getattr(st, "st_%s" % timestamp) <= abs(age):
         return True
     return False
 
@@ -468,7 +468,7 @@ def main():
                         depth = int(fsname.count(os.path.sep)) - int(wpath.count(os.path.sep)) + 1
                         if depth > params['depth']:
                             # Empty the list used by os.walk to avoid traversing deeper unnecessarily
-                            del(dirs[:])
+                            del dirs[:]
                             continue
                     if os.path.basename(fsname).startswith('.') and not params['hidden']:
                         continue

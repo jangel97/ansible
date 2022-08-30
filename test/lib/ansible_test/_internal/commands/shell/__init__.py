@@ -46,7 +46,7 @@ from ...inventory import (
 )
 
 
-def command_shell(args):  # type: (ShellConfig) -> None
+def command_shell(args: ShellConfig) -> None:
     """Entry point for the `shell` command."""
     if args.raw and isinstance(args.targets[0], ControllerConfig):
         raise ApplicationError('The --raw option has no effect on the controller.')
@@ -66,7 +66,7 @@ def command_shell(args):  # type: (ShellConfig) -> None
 
     if isinstance(target_profile, ControllerProfile):
         # run the shell locally unless a target was requested
-        con = LocalConnection(args)  # type: Connection
+        con: Connection = LocalConnection(args)
 
         if args.export:
             display.info('Configuring controller inventory.', verbosity=1)
@@ -90,7 +90,7 @@ def command_shell(args):  # type: (ShellConfig) -> None
         return
 
     if isinstance(con, SshConnection) and args.raw:
-        cmd = []  # type: t.List[str]
+        cmd: list[str] = []
     elif isinstance(target_profile, PosixProfile):
         cmd = []
 

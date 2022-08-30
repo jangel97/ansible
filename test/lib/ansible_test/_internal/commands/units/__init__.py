@@ -93,7 +93,7 @@ class TestContext:
     module_utils = 'module_utils'
 
 
-def command_units(args):  # type: (UnitsConfig) -> None
+def command_units(args: UnitsConfig) -> None:
     """Run unit tests."""
     handle_layout_messages(data_context().content.unit_messages)
 
@@ -103,7 +103,7 @@ def command_units(args):  # type: (UnitsConfig) -> None
 
     paths = [target.path for target in include]
 
-    content_config = get_content_config()
+    content_config = get_content_config(args)
     supported_remote_python_versions = content_config.modules.python_versions
 
     if content_config.modules.controller_only:
@@ -128,8 +128,8 @@ def command_units(args):  # type: (UnitsConfig) -> None
     if not paths:
         raise AllTargetsSkipped()
 
-    targets = t.cast(t.List[PosixConfig], args.targets)
-    target_versions = {target.python.version: target for target in targets}  # type: t.Dict[str, PosixConfig]
+    targets = t.cast(list[PosixConfig], args.targets)
+    target_versions: dict[str, PosixConfig] = {target.python.version: target for target in targets}
     skipped_versions = args.host_settings.skipped_python_versions
     warn_versions = []
 
@@ -221,7 +221,7 @@ def command_units(args):  # type: (UnitsConfig) -> None
             display.warning("Skipping unit tests on Python %s because it could not be found." % version)
             continue
 
-        target_profiles = {profile.config.python.version: profile for profile in host_state.targets(PosixProfile)}  # type: t.Dict[str, PosixProfile]
+        target_profiles: dict[str, PosixProfile] = {profile.config.python.version: profile for profile in host_state.targets(PosixProfile)}
         target_profile = target_profiles[version]
 
         final_candidates = [(test_context, target_profile.python, paths, env) for test_context, paths, env in test_candidates]
@@ -297,7 +297,7 @@ def command_units(args):  # type: (UnitsConfig) -> None
                 raise
 
 
-def get_units_ansible_python_path(args, test_context):  # type: (UnitsConfig, str) -> str
+def get_units_ansible_python_path(args: UnitsConfig, test_context: str) -> str:
     """
     Return a directory usable for PYTHONPATH, containing only the modules and module_utils portion of the ansible package.
     The temporary directory created will be cached for the lifetime of the process and cleaned up at exit.

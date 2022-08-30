@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import atexit
+import collections.abc as c
 import contextlib
 import json
 import os
@@ -36,6 +37,7 @@ from .util import (
     ApplicationError,
     SubprocessError,
     generate_name,
+    verified_chmod,
 )
 
 from .io import (
@@ -58,15 +60,15 @@ from .host_configs import (
     VirtualPythonConfig,
 )
 
-CHECK_YAML_VERSIONS = {}  # type: t.Dict[str, t.Any]
+CHECK_YAML_VERSIONS: dict[str, t.Any] = {}
 
 
 class ShellScriptTemplate:
     """A simple substitution template for shell scripts."""
-    def __init__(self, template):  # type: (str) -> None
+    def __init__(self, template: str) -> None:
         self.template = template
 
-    def substitute(self, **kwargs: t.Union[str, t.List[str]]) -> str:
+    def substitute(self, **kwargs: t.Union[str, list[str]]) -> str:
         """Return a string templated with the given arguments."""
         kvp = dict((k, self.quote(v)) for k, v in kwargs.items())
         pattern = re.compile(r'#{(?P<name>[^}]+)}')
@@ -74,7 +76,7 @@ class ShellScriptTemplate:
         return value
 
     @staticmethod
-    def quote(value):  # type: (t.Union[str, t.List[str]]) -> str
+    def quote(value: t.Union[str, list[str]]) -> str:
         """Return a shell quoted version of the given value."""
         if isinstance(value, list):
             return shlex.quote(' '.join(value))
@@ -84,13 +86,13 @@ class ShellScriptTemplate:
 
 class ResultType:
     """Test result type."""
-    BOT = None  # type: ResultType
-    COVERAGE = None  # type: ResultType
-    DATA = None  # type: ResultType
-    JUNIT = None  # type: ResultType
-    LOGS = None  # type: ResultType
-    REPORTS = None  # type: ResultType
-    TMP = None   # type: ResultType
+    BOT: ResultType = None
+    COVERAGE: ResultType = None
+    DATA: ResultType = None
+    JUNIT: ResultType = None
+    LOGS: ResultType = None
+    REPORTS: ResultType = None
+    TMP: ResultType = None
 
     @staticmethod
     def _populate():
@@ -102,20 +104,20 @@ class ResultType:
         ResultType.REPORTS = ResultType('reports')
         ResultType.TMP = ResultType('.tmp')
 
-    def __init__(self, name):  # type: (str) -> None
+    def __init__(self, name: str) -> None:
         self.name = name
 
     @property
-    def relative_path(self):  # type: () -> str
+    def relative_path(self) -> str:
         """The content relative path to the results."""
         return os.path.join(data_context().content.results_path, self.name)
 
     @property
-    def path(self):  # type: () -> str
+    def path(self) -> str:
         """The absolute path to the results."""
         return os.path.join(data_context().content.root, self.relative_path)
 
-    def __str__(self):  # type: () -> str
+    def __str__(self) -> str:
         return self.name
 
 
@@ -125,31 +127,31 @@ ResultType._populate()  # pylint: disable=protected-access
 
 class CommonConfig:
     """Configuration common to all commands."""
-    def __init__(self, args, command):  # type: (t.Any, str) -> None
+    def __init__(self, args: t.Any, command: str) -> None:
         self.command = command
         self.interactive = False
         self.check_layout = True
-        self.success = None  # type: t.Optional[bool]
+        self.success: t.Optional[bool] = None
 
-        self.color = args.color  # type: bool
-        self.explain = args.explain  # type: bool
-        self.verbosity = args.verbosity  # type: int
-        self.debug = args.debug  # type: bool
-        self.truncate = args.truncate  # type: int
-        self.redact = args.redact  # type: bool
+        self.color: bool = args.color
+        self.explain: bool = args.explain
+        self.verbosity: int = args.verbosity
+        self.debug: bool = args.debug
+        self.truncate: int = args.truncate
+        self.redact: bool = args.redact
 
-        self.display_stderr = False  # type: bool
+        self.display_stderr: bool = False
 
         self.session_name = generate_name()
 
-        self.cache = {}  # type: t.Dict[str, t.Any]
+        self.cache: dict[str, t.Any] = {}
 
-    def get_ansible_config(self):  # type: () -> str
+    def get_ansible_config(self) -> str:
         """Return the path to the Ansible config for the given config."""
         return os.path.join(ANSIBLE_TEST_DATA_ROOT, 'ansible.cfg')
 
 
-def create_result_directories(args):  # type: (CommonConfig) -> None
+def create_result_directories(args: CommonConfig) -> None:
     """Create result directories."""
     if args.explain:
         return
@@ -158,7 +160,7 @@ def create_result_directories(args):  # type: (CommonConfig) -> None
     make_dirs(ResultType.DATA.path)
 
 
-def handle_layout_messages(messages):  # type: (t.Optional[LayoutMessages]) -> None
+def handle_layout_messages(messages: t.Optional[LayoutMessages]) -> None:
     """Display the given layout messages."""
     if not messages:
         return
@@ -173,7 +175,7 @@ def handle_layout_messages(messages):  # type: (t.Optional[LayoutMessages]) -> N
         raise ApplicationError('\n'.join(messages.error))
 
 
-def process_scoped_temporary_file(args, prefix='ansible-test-', suffix=None):  # type: (CommonConfig, t.Optional[str], t.Optional[str]) -> str
+def process_scoped_temporary_file(args: CommonConfig, prefix: t.Optional[str] = 'ansible-test-', suffix: t.Optional[str] = None) -> str:
     """Return the path to a temporary file that will be automatically removed when the process exits."""
     if args.explain:
         path = os.path.join(tempfile.gettempdir(), f'{prefix or tempfile.gettempprefix()}{generate_name()}{suffix or ""}')
@@ -185,7 +187,7 @@ def process_scoped_temporary_file(args, prefix='ansible-test-', suffix=None):  #
     return path
 
 
-def process_scoped_temporary_directory(args, prefix='ansible-test-', suffix=None):  # type: (CommonConfig, t.Optional[str], t.Optional[str]) -> str
+def process_scoped_temporary_directory(args: CommonConfig, prefix: t.Optional[str] = 'ansible-test-', suffix: t.Optional[str] = None) -> str:
     """Return the path to a temporary directory that will be automatically removed when the process exits."""
     if args.explain:
         path = os.path.join(tempfile.gettempdir(), f'{prefix or tempfile.gettempprefix()}{generate_name()}{suffix or ""}')
@@ -197,7 +199,7 @@ def process_scoped_temporary_directory(args, prefix='ansible-test-', suffix=None
 
 
 @contextlib.contextmanager
-def named_temporary_file(args, prefix, suffix, directory, content):  # type: (CommonConfig, str, str, t.Optional[str], str) -> t.Iterator[str]
+def named_temporary_file(args: CommonConfig, prefix: str, suffix: str, directory: t.Optional[str], content: str) -> c.Iterator[str]:
     """Context manager for a named temporary file."""
     if args.explain:
         yield os.path.join(directory or '/tmp', '%stemp%s' % (prefix, suffix))
@@ -209,25 +211,25 @@ def named_temporary_file(args, prefix, suffix, directory, content):  # type: (Co
             yield tempfile_fd.name
 
 
-def write_json_test_results(category,  # type: ResultType
-                            name,  # type: str
-                            content,  # type: t.Union[t.List[t.Any], t.Dict[str, t.Any]]
-                            formatted=True,  # type: bool
-                            encoder=None,  # type: t.Optional[t.Type[json.JSONEncoder]]
-                            ):  # type: (...) -> None
+def write_json_test_results(category: ResultType,
+                            name: str,
+                            content: t.Union[list[t.Any], dict[str, t.Any]],
+                            formatted: bool = True,
+                            encoder: t.Optional[t.Type[json.JSONEncoder]] = None,
+                            ) -> None:
     """Write the given json content to the specified test results path, creating directories as needed."""
     path = os.path.join(category.path, name)
     write_json_file(path, content, create_directories=True, formatted=formatted, encoder=encoder)
 
 
-def write_text_test_results(category, name, content):  # type: (ResultType, str, str) -> None
+def write_text_test_results(category: ResultType, name: str, content: str) -> None:
     """Write the given text content to the specified test results path, creating directories as needed."""
     path = os.path.join(category.path, name)
     write_text_file(path, content, create_directories=True)
 
 
 @cache
-def get_injector_path():  # type: () -> str
+def get_injector_path() -> str:
     """Return the path to a directory which contains a `python.py` executable and associated injector scripts."""
     injector_path = tempfile.mkdtemp(prefix='ansible-test-', suffix='-injector', dir='/tmp')
 
@@ -256,9 +258,9 @@ def get_injector_path():  # type: () -> str
         script = set_shebang(script, shebang)
 
         write_text_file(dst, script)
-        os.chmod(dst, mode)
+        verified_chmod(dst, mode)
 
-    os.chmod(injector_path, MODE_DIRECTORY)
+    verified_chmod(injector_path, MODE_DIRECTORY)
 
     def cleanup_injector():
         """Remove the temporary injector directory."""
@@ -269,7 +271,7 @@ def get_injector_path():  # type: () -> str
     return injector_path
 
 
-def set_shebang(script, executable):  # type: (str, str) -> str
+def set_shebang(script: str, executable: str) -> str:
     """Return the given script with the specified executable used for the shebang."""
     prefix = '#!'
     shebang = prefix + executable
@@ -292,7 +294,7 @@ def set_shebang(script, executable):  # type: (str, str) -> str
     return script
 
 
-def get_python_path(interpreter):  # type: (str) -> str
+def get_python_path(interpreter: str) -> str:
     """Return the path to a directory which contains a `python` executable that runs the specified interpreter."""
     python_path = PYTHON_PATHS.get(interpreter)
 
@@ -319,7 +321,7 @@ def get_python_path(interpreter):  # type: (str) -> str
 
     create_interpreter_wrapper(interpreter, injected_interpreter)
 
-    os.chmod(python_path, MODE_DIRECTORY)
+    verified_chmod(python_path, MODE_DIRECTORY)
 
     if not PYTHON_PATHS:
         atexit.register(cleanup_python_paths)
@@ -329,14 +331,14 @@ def get_python_path(interpreter):  # type: (str) -> str
     return python_path
 
 
-def create_temp_dir(prefix=None, suffix=None, base_dir=None):  # type: (t.Optional[str], t.Optional[str], t.Optional[str]) -> str
+def create_temp_dir(prefix: t.Optional[str] = None, suffix: t.Optional[str] = None, base_dir: t.Optional[str] = None) -> str:
     """Create a temporary directory that persists until the current process exits."""
     temp_path = tempfile.mkdtemp(prefix=prefix or 'tmp', suffix=suffix or '', dir=base_dir)
     atexit.register(remove_tree, temp_path)
     return temp_path
 
 
-def create_interpreter_wrapper(interpreter, injected_interpreter):  # type: (str, str) -> None
+def create_interpreter_wrapper(interpreter: str, injected_interpreter: str) -> None:
     """Create a wrapper for the given Python interpreter at the specified path."""
     # sys.executable is used for the shebang to guarantee it is a binary instead of a script
     # injected_interpreter could be a script from the system or our own wrapper created for the --venv option
@@ -357,7 +359,7 @@ def create_interpreter_wrapper(interpreter, injected_interpreter):  # type: (str
 
     write_text_file(injected_interpreter, code)
 
-    os.chmod(injected_interpreter, MODE_FILE_EXECUTE)
+    verified_chmod(injected_interpreter, MODE_FILE_EXECUTE)
 
 
 def cleanup_python_paths():
@@ -368,15 +370,15 @@ def cleanup_python_paths():
 
 
 def intercept_python(
-        args,  # type: CommonConfig
-        python,  # type: PythonConfig
-        cmd,  # type: t.List[str]
-        env,  # type: t.Dict[str, str]
-        capture,  # type: bool
-        data=None,  # type: t.Optional[str]
-        cwd=None,  # type: t.Optional[str]
-        always=False,  # type: bool
-):  # type: (...) -> t.Tuple[t.Optional[str], t.Optional[str]]
+        args: CommonConfig,
+        python: PythonConfig,
+        cmd: list[str],
+        env: dict[str, str],
+        capture: bool,
+        data: t.Optional[str] = None,
+        cwd: t.Optional[str] = None,
+        always: bool = False,
+) -> tuple[t.Optional[str], t.Optional[str]]:
     """
     Run a command while intercepting invocations of Python to control the version used.
     If the specified Python is an ansible-test managed virtual environment, it will be added to PATH to activate it.
@@ -400,21 +402,21 @@ def intercept_python(
 
 
 def run_command(
-        args,  # type: CommonConfig
-        cmd,  # type: t.Iterable[str]
-        capture,  # type: bool
-        env=None,  # type: t.Optional[t.Dict[str, str]]
-        data=None,  # type: t.Optional[str]
-        cwd=None,  # type: t.Optional[str]
-        always=False,  # type: bool
-        stdin=None,  # type: t.Optional[t.IO[bytes]]
-        stdout=None,  # type: t.Optional[t.IO[bytes]]
-        interactive=False,  # type: bool
-        output_stream=None,  # type: t.Optional[OutputStream]
-        cmd_verbosity=1,  # type: int
-        str_errors='strict',  # type: str
-        error_callback=None,  # type: t.Optional[t.Callable[[SubprocessError], None]]
-):  # type: (...) -> t.Tuple[t.Optional[str], t.Optional[str]]
+        args: CommonConfig,
+        cmd: c.Iterable[str],
+        capture: bool,
+        env: t.Optional[dict[str, str]] = None,
+        data: t.Optional[str] = None,
+        cwd: t.Optional[str] = None,
+        always: bool = False,
+        stdin: t.Optional[t.IO[bytes]] = None,
+        stdout: t.Optional[t.IO[bytes]] = None,
+        interactive: bool = False,
+        output_stream: t.Optional[OutputStream] = None,
+        cmd_verbosity: int = 1,
+        str_errors: str = 'strict',
+        error_callback: t.Optional[c.Callable[[SubprocessError], None]] = None,
+) -> tuple[t.Optional[str], t.Optional[str]]:
     """Run the specified command and return stdout and stderr as a tuple."""
     explain = args.explain and not always
     return raw_command(cmd, capture=capture, env=env, data=data, cwd=cwd, explain=explain, stdin=stdin, stdout=stdout, interactive=interactive,
@@ -431,7 +433,7 @@ def yamlcheck(python):
     return result['cloader']
 
 
-def check_pyyaml(python, required=True, quiet=False):  # type: (PythonConfig, bool, bool) -> t.Optional[bool]
+def check_pyyaml(python: PythonConfig, required: bool = True, quiet: bool = False) -> t.Optional[bool]:
     """
     Return True if PyYAML has libyaml support, False if it does not and None if it was not found.
     The result is cached if True or required.

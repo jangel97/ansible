@@ -81,11 +81,11 @@ class ControllerMode(enum.Enum):
 
 
 def add_environments(
-        parser,  # type: argparse.ArgumentParser
-        completer,  # type: CompositeActionCompletionFinder
-        controller_mode,  # type: ControllerMode
-        target_mode,  # type: TargetMode
-):  # type: (...) -> None
+        parser: argparse.ArgumentParser,
+        completer: CompositeActionCompletionFinder,
+        controller_mode: ControllerMode,
+        target_mode: TargetMode,
+) -> None:
     """Add arguments for the environments used to run ansible-test and commands it invokes."""
     no_environment = controller_mode == ControllerMode.NO_DELEGATION and target_mode == TargetMode.NO_TARGETS
 
@@ -114,8 +114,8 @@ def add_environments(
 
 
 def add_global_options(
-        parser,  # type: argparse.ArgumentParser
-        controller_mode,  # type: ControllerMode
+        parser: argparse.ArgumentParser,
+        controller_mode: ControllerMode,
 ):
     """Add global options for controlling the test environment that work with both the legacy and composite options."""
     global_parser = t.cast(argparse.ArgumentParser, parser.add_argument_group(title='global environment arguments'))
@@ -156,11 +156,11 @@ def add_global_options(
 
 
 def add_composite_environment_options(
-        parser,  # type: argparse.ArgumentParser
-        completer,  # type: CompositeActionCompletionFinder
-        controller_mode,  # type: ControllerMode
-        target_mode,  # type: TargetMode
-):  # type: (...) -> t.List[t.Type[CompositeAction]]
+        parser: argparse.ArgumentParser,
+        completer: CompositeActionCompletionFinder,
+        controller_mode: ControllerMode,
+        target_mode: TargetMode,
+) -> list[t.Type[CompositeAction]]:
     """Add composite options for controlling the test environment."""
     composite_parser = t.cast(argparse.ArgumentParser, parser.add_argument_group(
         title='composite environment arguments (mutually exclusive with "environment arguments" above)'))
@@ -170,9 +170,9 @@ def add_composite_environment_options(
         help=argparse.SUPPRESS,
     )
 
-    action_types = []  # type: t.List[t.Type[CompositeAction]]
+    action_types: list[t.Type[CompositeAction]] = []
 
-    def register_action_type(action_type):  # type: (t.Type[CompositeAction]) -> t.Type[CompositeAction]
+    def register_action_type(action_type: t.Type[CompositeAction]) -> t.Type[CompositeAction]:
         """Register the provided composite action type and return it."""
         action_types.append(action_type)
         return action_type
@@ -246,9 +246,9 @@ def add_composite_environment_options(
 
 
 def add_legacy_environment_options(
-        parser,  # type: argparse.ArgumentParser
-        controller_mode,  # type: ControllerMode
-        target_mode,  # type: TargetMode
+        parser: argparse.ArgumentParser,
+        controller_mode: ControllerMode,
+        target_mode: TargetMode,
 ):
     """Add legacy options for controlling the test environment."""
     environment: argparse.ArgumentParser = parser.add_argument_group(  # type: ignore[assignment]  # real type private
@@ -259,11 +259,11 @@ def add_legacy_environment_options(
 
 
 def add_environments_python(
-        environments_parser,  # type: argparse.ArgumentParser
-        target_mode,  # type: TargetMode
-):  # type: (...) -> None
+        environments_parser: argparse.ArgumentParser,
+        target_mode: TargetMode,
+) -> None:
     """Add environment arguments to control the Python version(s) used."""
-    python_versions: t.Tuple[str, ...]
+    python_versions: tuple[str, ...]
 
     if target_mode.has_python:
         python_versions = SUPPORTED_PYTHON_VERSIONS
@@ -285,10 +285,10 @@ def add_environments_python(
 
 
 def add_environments_host(
-        environments_parser,  # type: argparse.ArgumentParser
-        controller_mode,  # type: ControllerMode
-        target_mode  # type: TargetMode
-):  # type: (...) -> None
+        environments_parser: argparse.ArgumentParser,
+        controller_mode: ControllerMode,
+        target_mode: TargetMode,
+) -> None:
     """Add environment arguments for the given host and argument modes."""
     environments_exclusive_group: argparse.ArgumentParser = environments_parser.add_mutually_exclusive_group()  # type: ignore[assignment]  # real type private
 
@@ -307,8 +307,8 @@ def add_environments_host(
 
 
 def add_environment_network(
-    environments_parser,  # type: argparse.ArgumentParser
-):  # type: (...) -> None
+    environments_parser: argparse.ArgumentParser,
+) -> None:
     """Add environment arguments for running on a windows host."""
     register_completer(environments_parser.add_argument(
         '--platform',
@@ -341,8 +341,8 @@ def add_environment_network(
 
 
 def add_environment_windows(
-        environments_parser,  # type: argparse.ArgumentParser
-):  # type: (...) -> None
+        environments_parser: argparse.ArgumentParser,
+) -> None:
     """Add environment arguments for running on a windows host."""
     register_completer(environments_parser.add_argument(
         '--windows',
@@ -359,8 +359,8 @@ def add_environment_windows(
 
 
 def add_environment_local(
-        exclusive_parser,  # type: argparse.ArgumentParser
-):  # type: (...) -> None
+        exclusive_parser: argparse.ArgumentParser,
+) -> None:
     """Add environment arguments for running on the local (origin) host."""
     exclusive_parser.add_argument(
         '--local',
@@ -370,9 +370,9 @@ def add_environment_local(
 
 
 def add_environment_venv(
-        exclusive_parser,  # type: argparse.ArgumentParser
-        environments_parser,  # type: argparse.ArgumentParser
-):  # type: (...) -> None
+        exclusive_parser: argparse.ArgumentParser,
+        environments_parser: argparse.ArgumentParser,
+) -> None:
     """Add environment arguments for running in ansible-test managed virtual environments."""
     exclusive_parser.add_argument(
         '--venv',
@@ -387,9 +387,9 @@ def add_environment_venv(
 
 
 def add_global_docker(
-        parser,  # type: argparse.ArgumentParser
-        controller_mode,  # type: ControllerMode
-):  # type: (...) -> None
+        parser: argparse.ArgumentParser,
+        controller_mode: ControllerMode,
+) -> None:
     """Add global options for Docker."""
     if controller_mode != ControllerMode.DELEGATED:
         parser.set_defaults(
@@ -430,10 +430,10 @@ def add_global_docker(
 
 
 def add_environment_docker(
-        exclusive_parser,  # type: argparse.ArgumentParser
-        environments_parser,  # type: argparse.ArgumentParser
-        target_mode,  # type: TargetMode
-):  # type: (...) -> None
+        exclusive_parser: argparse.ArgumentParser,
+        environments_parser: argparse.ArgumentParser,
+        target_mode: TargetMode,
+) -> None:
     """Add environment arguments for running in docker containers."""
     if target_mode in (TargetMode.POSIX_INTEGRATION, TargetMode.SHELL):
         docker_images = sorted(filter_completion(docker_completion()))
@@ -470,9 +470,9 @@ def add_environment_docker(
 
 
 def add_global_remote(
-        parser,  # type: argparse.ArgumentParser
-        controller_mode,  # type: ControllerMode
-):  # type: (...) -> None
+        parser: argparse.ArgumentParser,
+        controller_mode: ControllerMode,
+) -> None:
     """Add global options for remote instances."""
     if controller_mode != ControllerMode.DELEGATED:
         parser.set_defaults(
@@ -509,10 +509,10 @@ def add_global_remote(
 
 
 def add_environment_remote(
-        exclusive_parser,  # type: argparse.ArgumentParser
-        environments_parser,  # type: argparse.ArgumentParser
-        target_mode,  # type: TargetMode
-):  # type: (...) -> None
+        exclusive_parser: argparse.ArgumentParser,
+        environments_parser: argparse.ArgumentParser,
+        target_mode: TargetMode,
+) -> None:
     """Add environment arguments for running in ansible-core-ci provisioned remote virtual machines."""
     if target_mode == TargetMode.POSIX_INTEGRATION:
         remote_platforms = get_remote_platform_choices()
@@ -544,24 +544,24 @@ def add_environment_remote(
     )
 
 
-def complete_remote_stage(prefix: str, **_) -> t.List[str]:
+def complete_remote_stage(prefix: str, **_) -> list[str]:
     """Return a list of supported stages matching the given prefix."""
     return [stage for stage in ('prod', 'dev') if stage.startswith(prefix)]
 
 
-def complete_windows(prefix: str, parsed_args: argparse.Namespace, **_) -> t.List[str]:
+def complete_windows(prefix: str, parsed_args: argparse.Namespace, **_) -> list[str]:
     """Return a list of supported Windows versions matching the given prefix, excluding versions already parsed from the command line."""
     return [i for i in get_windows_version_choices() if i.startswith(prefix) and (not parsed_args.windows or i not in parsed_args.windows)]
 
 
-def complete_network_platform(prefix: str, parsed_args: argparse.Namespace, **_) -> t.List[str]:
+def complete_network_platform(prefix: str, parsed_args: argparse.Namespace, **_) -> list[str]:
     """Return a list of supported network platforms matching the given prefix, excluding platforms already parsed from the command line."""
     images = sorted(filter_completion(network_completion()))
 
     return [i for i in images if i.startswith(prefix) and (not parsed_args.platform or i not in parsed_args.platform)]
 
 
-def complete_network_platform_collection(prefix: str, parsed_args: argparse.Namespace, **_) -> t.List[str]:
+def complete_network_platform_collection(prefix: str, parsed_args: argparse.Namespace, **_) -> list[str]:
     """Return a list of supported network platforms matching the given prefix, excluding collection platforms already parsed from the command line."""
     left = prefix.split('=')[0]
     images = sorted(set(image.platform for image in filter_completion(network_completion()).values()))
@@ -569,7 +569,7 @@ def complete_network_platform_collection(prefix: str, parsed_args: argparse.Name
     return [i + '=' for i in images if i.startswith(left) and (not parsed_args.platform_collection or i not in [x[0] for x in parsed_args.platform_collection])]
 
 
-def complete_network_platform_connection(prefix: str, parsed_args: argparse.Namespace, **_) -> t.List[str]:
+def complete_network_platform_connection(prefix: str, parsed_args: argparse.Namespace, **_) -> list[str]:
     """Return a list of supported network platforms matching the given prefix, excluding connection platforms already parsed from the command line."""
     left = prefix.split('=')[0]
     images = sorted(set(image.platform for image in filter_completion(network_completion()).values()))
@@ -577,16 +577,16 @@ def complete_network_platform_connection(prefix: str, parsed_args: argparse.Name
     return [i + '=' for i in images if i.startswith(left) and (not parsed_args.platform_connection or i not in [x[0] for x in parsed_args.platform_connection])]
 
 
-def get_remote_platform_choices(controller=False):  # type: (bool) -> t.List[str]
+def get_remote_platform_choices(controller: bool = False) -> list[str]:
     """Return a list of supported remote platforms matching the given prefix."""
     return sorted(filter_completion(remote_completion(), controller_only=controller))
 
 
-def get_windows_platform_choices():  # type: () -> t.List[str]
+def get_windows_platform_choices() -> list[str]:
     """Return a list of supported Windows versions matching the given prefix."""
     return sorted(f'windows/{windows.version}' for windows in filter_completion(windows_completion()).values())
 
 
-def get_windows_version_choices():  # type: () -> t.List[str]
+def get_windows_version_choices() -> list[str]:
     """Return a list of supported Windows versions."""
     return sorted(windows.version for windows in filter_completion(windows_completion()).values())

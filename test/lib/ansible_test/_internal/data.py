@@ -1,6 +1,7 @@
 """Context information for the current invocation of ansible-test."""
 from __future__ import annotations
 
+import collections.abc as c
 import dataclasses
 import os
 import typing as t
@@ -60,9 +61,9 @@ class DataContext:
 
         self.__layout_providers = layout_providers
         self.__source_providers = source_providers
-        self.__ansible_source = None  # type: t.Optional[t.Tuple[t.Tuple[str, str], ...]]
+        self.__ansible_source: t.Optional[tuple[tuple[str, str], ...]] = None
 
-        self.payload_callbacks = []  # type: t.List[t.Callable[[t.List[t.Tuple[str, str]]], None]]
+        self.payload_callbacks: list[c.Callable[[list[tuple[str, str]]], None]] = []
 
         if content_path:
             content = self.__create_content_layout(layout_providers, source_providers, content_path, False)
@@ -71,9 +72,9 @@ class DataContext:
         else:
             content = self.__create_content_layout(layout_providers, source_providers, current_path, True)
 
-        self.content = content  # type: ContentLayout
+        self.content: ContentLayout = content
 
-    def create_collection_layouts(self):  # type: () -> t.List[ContentLayout]
+    def create_collection_layouts(self) -> list[ContentLayout]:
         """
         Return a list of collection layouts, one for each collection in the same collection root as the current collection layout.
         An empty list is returned if the current content layout is not a collection layout.
@@ -112,11 +113,11 @@ class DataContext:
         return collections
 
     @staticmethod
-    def __create_content_layout(layout_providers,  # type: t.List[t.Type[LayoutProvider]]
-                                source_providers,  # type: t.List[t.Type[SourceProvider]]
-                                root,  # type: str
-                                walk,  # type: bool
-                                ):  # type: (...) -> ContentLayout
+    def __create_content_layout(layout_providers: list[t.Type[LayoutProvider]],
+                                source_providers: list[t.Type[SourceProvider]],
+                                root: str,
+                                walk: bool,
+                                ) -> ContentLayout:
         """Create a content layout using the given providers and root path."""
         try:
             layout_provider = find_path_provider(LayoutProvider, layout_providers, root, walk)
@@ -129,7 +130,7 @@ class DataContext:
             # Doing so allows support for older git versions for which it is difficult to distinguish between a super project and a sub project.
             # It also provides a better user experience, since the solution for the user would effectively be the same -- to remove the nested version control.
             if isinstance(layout_provider, UnsupportedLayout):
-                source_provider = UnsupportedSource(layout_provider.root)  # type: SourceProvider
+                source_provider: SourceProvider = UnsupportedSource(layout_provider.root)
             else:
                 source_provider = find_path_provider(SourceProvider, source_providers, layout_provider.root, walk)
         except ProviderNotFoundForPath:
@@ -165,14 +166,14 @@ class DataContext:
         return tuple((os.path.join(source_provider.root, path), path) for path in source_provider.get_paths(source_provider.root))
 
     @property
-    def ansible_source(self):  # type: () -> t.Tuple[t.Tuple[str, str], ...]
+    def ansible_source(self) -> tuple[tuple[str, str], ...]:
         """Return a tuple of Ansible source files with both absolute and relative paths."""
         if not self.__ansible_source:
             self.__ansible_source = self.__create_ansible_source()
 
         return self.__ansible_source
 
-    def register_payload_callback(self, callback):  # type: (t.Callable[[t.List[t.Tuple[str, str]]], None]) -> None
+    def register_payload_callback(self, callback: c.Callable[[list[tuple[str, str]]], None]) -> None:
         """Register the given payload callback."""
         self.payload_callbacks.append(callback)
 
@@ -220,7 +221,7 @@ class DataContext:
 
 
 @cache
-def data_context():  # type: () -> DataContext
+def data_context() -> DataContext:
     """Initialize provider plugins."""
     provider_types = (
         'layout',
@@ -240,7 +241,7 @@ class PluginInfo:
     """Information about an Ansible plugin."""
     plugin_type: str
     name: str
-    paths: t.List[str]
+    paths: list[str]
 
 
 @cache
@@ -249,7 +250,7 @@ def content_plugins():
     Analyze content.
     The primary purpose of this analysis is to facilitate mapping of integration tests to the plugin(s) they are intended to test.
     """
-    plugins = {}  # type: t.Dict[str, t.Dict[str, PluginInfo]]
+    plugins: dict[str, dict[str, PluginInfo]] = {}
 
     for plugin_type, plugin_directory in data_context().content.plugin_paths.items():
         plugin_paths = sorted(data_context().content.walk_files(plugin_directory))

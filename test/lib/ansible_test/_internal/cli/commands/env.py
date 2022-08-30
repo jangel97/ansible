@@ -18,15 +18,15 @@ from ..environments import (
 
 def do_env(
         subparsers,
-        parent,  # type: argparse.ArgumentParser
-        completer,  # type: CompositeActionCompletionFinder
+        parent: argparse.ArgumentParser,
+        completer: CompositeActionCompletionFinder,
 ):
     """Command line parsing for the `env` command."""
-    parser = subparsers.add_parser(
+    parser: argparse.ArgumentParser = subparsers.add_parser(
         'env',
         parents=[parent],
         help='show information about the test environment',
-    )  # type: argparse.ArgumentParser
+    )
 
     parser.set_defaults(
         func=command_env,

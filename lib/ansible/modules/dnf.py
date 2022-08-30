@@ -36,7 +36,8 @@ options:
 
   list:
     description:
-      - Various (non-idempotent) commands for usage with C(/usr/bin/ansible) and I(not) playbooks. See examples.
+      - Various (non-idempotent) commands for usage with C(/usr/bin/ansible) and I(not) playbooks.
+        Use M(ansible.builtin.package_facts) instead of the C(list) argument as a best practice.
     type: str
 
   state:
@@ -547,9 +548,7 @@ class DnfModule(YumDnf):
             e2 = str(e2)
         v2 = str(v2)
         r2 = str(r2)
-        # print '%s, %s, %s vs %s, %s, %s' % (e1, v1, r1, e2, v2, r2)
         rc = dnf.rpm.rpm.labelCompare((e1, v1, r1), (e2, v2, r2))
-        # print '%s, %s, %s vs %s, %s, %s = %s' % (e1, v1, r1, e2, v2, r2, rc)
         return rc
 
     def _ensure_dnf(self):

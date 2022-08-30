@@ -14,6 +14,7 @@ from .init import (
 from .util import (
     ApplicationError,
     display,
+    report_locale,
 )
 
 from .delegation import (
@@ -46,19 +47,24 @@ from .provisioning import (
     PrimeContainers,
 )
 
+from .config import (
+    TestConfig,
+)
 
-def main(cli_args=None):  # type: (t.Optional[t.List[str]]) -> None
+
+def main(cli_args: t.Optional[list[str]] = None) -> None:
     """Main program function."""
     try:
         os.chdir(data_context().content.root)
         args = parse_args(cli_args)
-        config = args.config(args)  # type: CommonConfig
+        config: CommonConfig = args.config(args)
         display.verbosity = config.verbosity
         display.truncate = config.truncate
         display.redact = config.redact
         display.color = config.color
         display.fd = sys.stderr if config.display_stderr else sys.stdout
         configure_timeout(config)
+        report_locale(isinstance(config, TestConfig) and not config.delegate)
 
         display.info('RLIMIT_NOFILE: %s' % (CURRENT_RLIMIT_NOFILE,), verbosity=2)
 

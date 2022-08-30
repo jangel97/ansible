@@ -28,6 +28,7 @@ from ansible.module_utils.six.moves import builtins
 from ansible.utils import context_objects as co
 from ansible.utils.display import Display
 from ansible.utils.hashing import secure_hash_s
+from ansible.utils.sentinel import Sentinel
 
 
 @pytest.fixture(autouse='function')
@@ -494,6 +495,23 @@ def test_missing_required_galaxy_key(galaxy_yml_dir):
         collection.concrete_artifact_manager._get_meta_from_src_dir(galaxy_yml_dir)
 
 
+@pytest.mark.parametrize('galaxy_yml_dir', [b'namespace: test_namespace'], indirect=True)
+def test_galaxy_yaml_no_mandatory_keys(galaxy_yml_dir):
+    expected = "The collection galaxy.yml at '%s/galaxy.yml' is missing the " \
+               "following mandatory keys: authors, name, readme, version" % to_native(galaxy_yml_dir)
+
+    with pytest.raises(ValueError, match=expected):
+        assert collection.concrete_artifact_manager._get_meta_from_src_dir(galaxy_yml_dir, require_build_metadata=False) == expected
+
+
+@pytest.mark.parametrize('galaxy_yml_dir', [b'My life story is so very interesting'], indirect=True)
+def test_galaxy_yaml_no_mandatory_keys_bad_yaml(galaxy_yml_dir):
+    expected = "The collection galaxy.yml at '%s/galaxy.yml' is incorrectly formatted." % to_native(galaxy_yml_dir)
+
+    with pytest.raises(AnsibleError, match=expected):
+        collection.concrete_artifact_manager._get_meta_from_src_dir(galaxy_yml_dir)
+
+
 @pytest.mark.parametrize('galaxy_yml_dir', [b"""
 namespace: namespace
 name: collection
@@ -578,7 +596,7 @@ def test_build_ignore_files_and_folders(collection_input, monkeypatch):
         tests_file.write('random')
         tests_file.flush()
 
-    actual = collection._build_files_manifest(to_bytes(input_dir), 'namespace', 'collection', [])
+    actual = collection._build_files_manifest(to_bytes(input_dir), 'namespace', 'collection', [], Sentinel)
 
     assert actual['format'] == 1
     for manifest_entry in actual['files']:
@@ -614,7 +632,7 @@ def test_build_ignore_older_release_in_root(collection_input, monkeypatch):
             file_obj.write('random')
             file_obj.flush()
 
-    actual = collection._build_files_manifest(to_bytes(input_dir), 'namespace', 'collection', [])
+    actual = collection._build_files_manifest(to_bytes(input_dir), 'namespace', 'collection', [], Sentinel)
     assert actual['format'] == 1
 
     plugin_release_found = False
@@ -641,7 +659,8 @@ def test_build_ignore_patterns(collection_input, monkeypatch):
     monkeypatch.setattr(Display, 'vvv', mock_display)
 
     actual = collection._build_files_manifest(to_bytes(input_dir), 'namespace', 'collection',
-                                              ['*.md', 'plugins/action', 'playbooks/*.j2'])
+                                              ['*.md', 'plugins/action', 'playbooks/*.j2'],
+                                              Sentinel)
     assert actual['format'] == 1
 
     expected_missing = [
@@ -692,7 +711,7 @@ def test_build_ignore_symlink_target_outside_collection(collection_input, monkey
     link_path = os.path.join(input_dir, 'plugins', 'connection')
     os.symlink(outside_dir, link_path)
 
-    actual = collection._build_files_manifest(to_bytes(input_dir), 'namespace', 'collection', [])
+    actual = collection._build_files_manifest(to_bytes(input_dir), 'namespace', 'collection', [], Sentinel)
     for manifest_entry in actual['files']:
         assert manifest_entry['name'] != 'plugins/connection'
 
@@ -716,7 +735,7 @@ def test_build_copy_symlink_target_inside_collection(collection_input):
 
     os.symlink(roles_target, roles_link)
 
-    actual = collection._build_files_manifest(to_bytes(input_dir), 'namespace', 'collection', [])
+    actual = collection._build_files_manifest(to_bytes(input_dir), 'namespace', 'collection', [], Sentinel)
 
     linked_entries = [e for e in actual['files'] if e['name'].startswith('playbooks/roles/linked')]
     assert len(linked_entries) == 1

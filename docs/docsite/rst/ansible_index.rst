@@ -42,8 +42,10 @@ Ansible releases a new major release approximately twice a year. The core applic
    :caption: Using Ansible
 
    user_guide/index
+   inventory_guide/index
+   command_guide/index
    playbook_guide/index
-   win_guide/index
+   os_guide/index
    tips_tricks/index
 
 .. toctree::

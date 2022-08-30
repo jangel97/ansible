@@ -599,7 +599,6 @@ class PluginLoader:
         plugin_load_context.redirect_list.append(name)
         plugin_load_context.resolved = False
 
-        global _PLUGIN_FILTERS
         if name in _PLUGIN_FILTERS[self.package]:
             plugin_load_context.exit_reason = '{0} matched a defined plugin filter'.format(name)
             return plugin_load_context
@@ -870,12 +869,12 @@ class PluginLoader:
                 # or get options from config), so update the object before using the constructor
                 instance = object.__new__(obj)
                 self._update_object(instance, name, path, redirected_names)
-                obj.__init__(instance, *args, **kwargs)
+                obj.__init__(instance, *args, **kwargs)  # pylint: disable=unnecessary-dunder-call
                 obj = instance
             except TypeError as e:
                 if "abstract" in e.args[0]:
-                    # Abstract Base Class.  The found plugin file does not
-                    # fully implement the defined interface.
+                    # Abstract Base Class or incomplete plugin, don't load
+                    display.v('Returning not found on "%s" as it has unimplemented abstract methods; %s' % (name, to_native(e)))
                     return get_with_context_result(None, plugin_load_context)
                 raise
 
@@ -928,8 +927,6 @@ class PluginLoader:
         #
         #     Move _dedupe to be a class attribute, CUSTOM_DEDUPE, with subclasses for filters and
         #     tests setting it to True
-
-        global _PLUGIN_FILTERS
 
         dedupe = kwargs.pop('_dedupe', True)
         path_only = kwargs.pop('path_only', False)

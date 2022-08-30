@@ -54,7 +54,7 @@ from .data import (
 class Resource(metaclass=abc.ABCMeta):
     """Base class for Ansible Core CI resources."""
     @abc.abstractmethod
-    def as_tuple(self) -> t.Tuple[str, str, str, str]:
+    def as_tuple(self) -> tuple[str, str, str, str]:
         """Return the resource as a tuple of platform, version, architecture and provider."""
 
     @abc.abstractmethod
@@ -76,7 +76,7 @@ class VmResource(Resource):
     provider: str
     tag: str
 
-    def as_tuple(self) -> t.Tuple[str, str, str, str]:
+    def as_tuple(self) -> tuple[str, str, str, str]:
         """Return the resource as a tuple of platform, version, architecture and provider."""
         return self.platform, self.version, self.architecture, self.provider
 
@@ -95,7 +95,7 @@ class CloudResource(Resource):
     """Details needed to request cloud credentials from Ansible Core CI."""
     platform: str
 
-    def as_tuple(self) -> t.Tuple[str, str, str, str]:
+    def as_tuple(self) -> tuple[str, str, str, str]:
         """Return the resource as a tuple of platform, version, architecture and provider."""
         return self.platform, '', '', self.platform
 
@@ -115,10 +115,10 @@ class AnsibleCoreCI:
 
     def __init__(
             self,
-            args,  # type: EnvironmentConfig
-            resource,  # type: Resource
-            load=True,  # type: bool
-    ):  # type: (...) -> None
+            args: EnvironmentConfig,
+            resource: Resource,
+            load: bool = True,
+    ) -> None:
         self.args = args
         self.resource = resource
         self.platform, self.version, self.arch, self.provider = self.resource.as_tuple()
@@ -162,7 +162,7 @@ class AnsibleCoreCI:
             self._clear()
 
         if self.instance_id:
-            self.started = True  # type: bool
+            self.started: bool = True
         else:
             self.started = False
             self.instance_id = str(uuid.uuid4())
@@ -206,7 +206,7 @@ class AnsibleCoreCI:
 
         raise self._create_http_error(response)
 
-    def get(self, tries=3, sleep=15, always_raise_on=None):  # type: (int, int, t.Optional[t.List[int]]) -> t.Optional[InstanceConnection]
+    def get(self, tries: int = 3, sleep: int = 15, always_raise_on: t.Optional[list[int]] = None) -> t.Optional[InstanceConnection]:
         """Get instance connection information."""
         if not self.started:
             display.info(f'Skipping invalid {self.label} instance.', verbosity=1)
@@ -270,7 +270,7 @@ class AnsibleCoreCI:
 
         return self.connection
 
-    def wait(self, iterations=90):  # type: (t.Optional[int]) -> None
+    def wait(self, iterations: t.Optional[int] = 90) -> None:
         """Wait for the instance to become ready."""
         for _iteration in range(1, iterations):
             if self.get().running:
@@ -320,7 +320,7 @@ class AnsibleCoreCI:
 
         return response.json()
 
-    def _start_endpoint(self, data, headers):  # type: (t.Dict[str, t.Any], t.Dict[str, str]) -> HttpResponse
+    def _start_endpoint(self, data: dict[str, t.Any], headers: dict[str, str]) -> HttpResponse:
         tries = self.retries
         sleep = 15
 
@@ -368,7 +368,7 @@ class AnsibleCoreCI:
 
         return self.load(config)
 
-    def load(self, config):  # type: (t.Dict[str, str]) -> bool
+    def load(self, config: dict[str, str]) -> bool:
         """Load the instance from the provided dictionary."""
         self.instance_id = str(config['instance_id'])
         self.endpoint = config['endpoint']
@@ -378,7 +378,7 @@ class AnsibleCoreCI:
 
         return True
 
-    def _save(self):  # type: () -> None
+    def _save(self) -> None:
         """Save instance information."""
         if self.args.explain:
             return
@@ -387,7 +387,7 @@ class AnsibleCoreCI:
 
         write_json_file(self.path, config, create_directories=True)
 
-    def save(self):  # type: () -> t.Dict[str, str]
+    def save(self) -> dict[str, str]:
         """Save instance details and return as a dictionary."""
         return dict(
             label=self.resource.get_label(),
@@ -396,7 +396,7 @@ class AnsibleCoreCI:
         )
 
     @staticmethod
-    def _create_http_error(response):  # type: (HttpResponse) -> ApplicationError
+    def _create_http_error(response: HttpResponse) -> ApplicationError:
         """Return an exception created from the given HTTP response."""
         response_json = response.json()
         stack_trace = ''
@@ -423,7 +423,7 @@ class AnsibleCoreCI:
 
 class CoreHttpError(HttpError):
     """HTTP response as an error."""
-    def __init__(self, status, remote_message, remote_stack_trace):  # type: (int, str, str) -> None
+    def __init__(self, status: int, remote_message: str, remote_stack_trace: str) -> None:
         super().__init__(status, f'{remote_message}{remote_stack_trace}')
 
         self.remote_message = remote_message
@@ -437,7 +437,7 @@ class SshKey:
     PUB_NAME = f'{KEY_NAME}.pub'
 
     @mutex
-    def __init__(self, args):  # type: (EnvironmentConfig) -> None
+    def __init__(self, args: EnvironmentConfig) -> None:
         key_pair = self.get_key_pair()
 
         if not key_pair:
@@ -446,7 +446,7 @@ class SshKey:
         key, pub = key_pair
         key_dst, pub_dst = self.get_in_tree_key_pair_paths()
 
-        def ssh_key_callback(files):  # type: (t.List[t.Tuple[str, str]]) -> None
+        def ssh_key_callback(files: list[tuple[str, str]]) -> None:
             """
             Add the SSH keys to the payload file list.
             They are either outside the source tree or in the cache dir which is ignored by default.
@@ -466,7 +466,7 @@ class SshKey:
             self.key_contents = read_text_file(self.key).strip()
 
     @staticmethod
-    def get_relative_in_tree_private_key_path():  # type: () -> str
+    def get_relative_in_tree_private_key_path() -> str:
         """Return the ansible-test SSH private key path relative to the content tree."""
         temp_dir = ResultType.TMP.relative_path
 
@@ -474,7 +474,7 @@ class SshKey:
 
         return key
 
-    def get_in_tree_key_pair_paths(self):  # type: () -> t.Optional[t.Tuple[str, str]]
+    def get_in_tree_key_pair_paths(self) -> t.Optional[tuple[str, str]]:
         """Return the ansible-test SSH key pair paths from the content tree."""
         temp_dir = ResultType.TMP.path
 
@@ -483,7 +483,7 @@ class SshKey:
 
         return key, pub
 
-    def get_source_key_pair_paths(self):  # type: () -> t.Optional[t.Tuple[str, str]]
+    def get_source_key_pair_paths(self) -> t.Optional[tuple[str, str]]:
         """Return the ansible-test SSH key pair paths for the current user."""
         base_dir = os.path.expanduser('~/.ansible/test/')
 
@@ -492,7 +492,7 @@ class SshKey:
 
         return key, pub
 
-    def get_key_pair(self):  # type: () -> t.Optional[t.Tuple[str, str]]
+    def get_key_pair(self) -> t.Optional[tuple[str, str]]:
         """Return the ansible-test SSH key pair paths if present, otherwise return None."""
         key, pub = self.get_in_tree_key_pair_paths()
 
@@ -506,7 +506,7 @@ class SshKey:
 
         return None
 
-    def generate_key_pair(self, args):  # type: (EnvironmentConfig) -> t.Tuple[str, str]
+    def generate_key_pair(self, args: EnvironmentConfig) -> tuple[str, str]:
         """Generate an SSH key pair for use by all ansible-test invocations for the current user."""
         key, pub = self.get_source_key_pair_paths()
 
@@ -531,13 +531,13 @@ class SshKey:
 class InstanceConnection:
     """Container for remote instance status and connection details."""
     def __init__(self,
-                 running,  # type: bool
-                 hostname=None,  # type: t.Optional[str]
-                 port=None,  # type: t.Optional[int]
-                 username=None,  # type: t.Optional[str]
-                 password=None,  # type: t.Optional[str]
-                 response_json=None,  # type: t.Optional[t.Dict[str, t.Any]]
-                 ):  # type: (...) -> None
+                 running: bool,
+                 hostname: t.Optional[str] = None,
+                 port: t.Optional[int] = None,
+                 username: t.Optional[str] = None,
+                 password: t.Optional[str] = None,
+                 response_json: t.Optional[dict[str, t.Any]] = None,
+                 ) -> None:
         self.running = running
         self.hostname = hostname
         self.port = port

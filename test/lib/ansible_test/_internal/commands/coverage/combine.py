@@ -1,6 +1,7 @@
 """Combine code coverage files."""
 from __future__ import annotations
 
+import collections.abc as c
 import os
 import json
 import typing as t
@@ -63,13 +64,13 @@ from . import (
 TValue = t.TypeVar('TValue')
 
 
-def command_coverage_combine(args):  # type: (CoverageCombineConfig) -> None
+def command_coverage_combine(args: CoverageCombineConfig) -> None:
     """Patch paths in coverage files and merge into a single file."""
     host_state = prepare_profiles(args)  # coverage combine
     combine_coverage_files(args, host_state)
 
 
-def combine_coverage_files(args, host_state):  # type: (CoverageCombineConfig, HostState) -> t.List[str]
+def combine_coverage_files(args: CoverageCombineConfig, host_state: HostState) -> list[str]:
     """Combine coverage and return a list of the resulting files."""
     if args.delegate:
         if isinstance(args.controller, (DockerConfig, RemoteConfig)):
@@ -81,7 +82,7 @@ def combine_coverage_files(args, host_state):  # type: (CoverageCombineConfig, H
 
             pairs = [(path, os.path.relpath(path, data_context().content.root)) for path in exported_paths]
 
-            def coverage_callback(files):  # type: (t.List[t.Tuple[str, str]]) -> None
+            def coverage_callback(files: list[tuple[str, str]]) -> None:
                 """Add the coverage files to the payload file list."""
                 display.info('Including %d exported coverage file(s) in payload.' % len(pairs), verbosity=1)
                 files.extend(pairs)
@@ -107,7 +108,7 @@ class ExportedCoverageDataNotFound(ApplicationError):
             'The exported files must be in the directory: %s/' % ResultType.COVERAGE.relative_path)
 
 
-def _command_coverage_combine_python(args, host_state):  # type: (CoverageCombineConfig, HostState) -> t.List[str]
+def _command_coverage_combine_python(args: CoverageCombineConfig, host_state: HostState) -> list[str]:
     """Combine Python coverage files and return a list of the output files."""
     coverage = initialize_coverage(args, host_state)
 
@@ -188,7 +189,7 @@ def _command_coverage_combine_python(args, host_state):  # type: (CoverageCombin
     return sorted(output_files)
 
 
-def _command_coverage_combine_powershell(args):  # type: (CoverageCombineConfig) -> t.List[str]
+def _command_coverage_combine_powershell(args: CoverageCombineConfig) -> list[str]:
     """Combine PowerShell coverage files and return a list of the output files."""
     coverage_files = get_powershell_coverage_files()
 
@@ -262,7 +263,7 @@ def _command_coverage_combine_powershell(args):  # type: (CoverageCombineConfig)
     return sorted(output_files)
 
 
-def _get_coverage_targets(args, walk_func):  # type: (CoverageCombineConfig, t.Callable) -> t.List[t.Tuple[str, int]]
+def _get_coverage_targets(args: CoverageCombineConfig, walk_func: c.Callable) -> list[tuple[str, int]]:
     """Return a list of files to cover and the number of lines in each file, using the given function as the source of the files."""
     sources = []
 
@@ -284,7 +285,7 @@ def _get_coverage_targets(args, walk_func):  # type: (CoverageCombineConfig, t.C
 def _build_stub_groups(
         args: CoverageCombineConfig,
         sources: list[tuple[str, int]],
-        default_stub_value: t.Callable[[list[str]], dict[str, TValue]],
+        default_stub_value: c.Callable[[list[str]], dict[str, TValue]],
 ) -> dict[str, dict[str, TValue]]:
     """
     Split the given list of sources with line counts into groups, maintaining a maximum line count for each group.
@@ -316,7 +317,7 @@ def _build_stub_groups(
     return groups
 
 
-def get_coverage_group(args, coverage_file):  # type: (CoverageCombineConfig, str) -> t.Optional[str]
+def get_coverage_group(args: CoverageCombineConfig, coverage_file: str) -> t.Optional[str]:
     """Return the name of the coverage group for the specified coverage file, or None if no group was found."""
     parts = os.path.basename(coverage_file).split('=', 4)
 
@@ -350,12 +351,12 @@ def get_coverage_group(args, coverage_file):  # type: (CoverageCombineConfig, st
 
 class CoverageCombineConfig(CoverageConfig):
     """Configuration for the coverage combine command."""
-    def __init__(self, args):  # type: (t.Any) -> None
+    def __init__(self, args: t.Any) -> None:
         super().__init__(args)
 
-        self.group_by = frozenset(args.group_by) if args.group_by else frozenset()  # type: t.FrozenSet[str]
-        self.all = args.all  # type: bool
-        self.stub = args.stub  # type: bool
+        self.group_by: frozenset[str] = frozenset(args.group_by) if args.group_by else frozenset()
+        self.all: bool = args.all
+        self.stub: bool = args.stub
 
         # only available to coverage combine
-        self.export = args.export if 'export' in args else False  # type: str
+        self.export: str = args.export if 'export' in args else False

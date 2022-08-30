@@ -1,6 +1,7 @@
 """Sanity test using pylint."""
 from __future__ import annotations
 
+import collections.abc as c
 import itertools
 import json
 import os
@@ -70,20 +71,20 @@ class PylintTest(SanitySingleVersion):
         ])
 
     @property
-    def supported_python_versions(self):  # type: () -> t.Optional[t.Tuple[str, ...]]
+    def supported_python_versions(self) -> t.Optional[tuple[str, ...]]:
         """A tuple of supported Python versions or None if the test does not depend on specific Python versions."""
         return tuple(version for version in CONTROLLER_PYTHON_VERSIONS if str_to_version(version) < (3, 11))
 
     @property
-    def error_code(self):  # type: () -> t.Optional[str]
+    def error_code(self) -> t.Optional[str]:
         """Error code for ansible-test matching the format used by the underlying test program, or None if the program does not use error codes."""
         return 'ansible-test'
 
-    def filter_targets(self, targets):  # type: (t.List[TestTarget]) -> t.List[TestTarget]
+    def filter_targets(self, targets: list[TestTarget]) -> list[TestTarget]:
         """Return the given list of test targets, filtered to include only those relevant for the test."""
         return [target for target in targets if os.path.splitext(target.path)[1] == '.py' or is_subdir(target.path, 'bin')]
 
-    def test(self, args, targets, python):  # type: (SanityConfig, SanityTargets, PythonConfig) -> TestResult
+    def test(self, args: SanityConfig, targets: SanityTargets, python: PythonConfig) -> TestResult:
         plugin_dir = os.path.join(SANITY_ROOT, 'pylint', 'plugins')
         plugin_names = sorted(p[0] for p in [
             os.path.splitext(p) for p in os.listdir(plugin_dir)] if p[1] == '.py' and p[0] != '__init__')
@@ -107,15 +108,15 @@ class PylintTest(SanitySingleVersion):
         contexts = []
         remaining_paths = set(paths)
 
-        def add_context(available_paths, context_name, context_filter):  # type: (t.Set[str], str, t.Callable[[str], bool]) -> None
+        def add_context(available_paths: set[str], context_name: str, context_filter: c.Callable[[str], bool]) -> None:
             """Add the specified context to the context list, consuming available paths that match the given context filter."""
             filtered_paths = set(p for p in available_paths if context_filter(p))
             contexts.append((context_name, sorted(filtered_paths)))
             available_paths -= filtered_paths
 
-        def filter_path(path_filter=None):  # type: (str) -> t.Callable[[str], bool]
+        def filter_path(path_filter: str = None) -> c.Callable[[str], bool]:
             """Return a function that filters out paths which are not a subdirectory of the given path."""
-            def context_filter(path_to_filter):  # type: (str) -> bool
+            def context_filter(path_to_filter: str) -> bool:
                 """Return true if the given path matches, otherwise return False."""
                 return is_subdir(path_to_filter, path_filter)
 
@@ -198,14 +199,14 @@ class PylintTest(SanitySingleVersion):
 
     @staticmethod
     def pylint(
-            args,  # type: SanityConfig
-            context,  # type: str
-            paths,  # type: t.List[str]
-            plugin_dir,  # type: str
-            plugin_names,  # type: t.List[str]
-            python,  # type: PythonConfig
-            collection_detail,  # type: CollectionDetail
-    ):  # type: (...) -> t.List[t.Dict[str, str]]
+            args: SanityConfig,
+            context: str,
+            paths: list[str],
+            plugin_dir: str,
+            plugin_names: list[str],
+            python: PythonConfig,
+            collection_detail: CollectionDetail,
+    ) -> list[dict[str, str]]:
         """Run pylint using the config specified by the context on the specified paths."""
         rcfile = os.path.join(SANITY_ROOT, 'pylint', 'config', context.split('/')[0] + '.cfg')
 

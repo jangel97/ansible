@@ -64,7 +64,7 @@ class CoverageVersion:
 
 COVERAGE_VERSIONS = (
     # IMPORTANT: Keep this in sync with the ansible-test.txt requirements file.
-    CoverageVersion('6.4.2', 7, (3, 7), (3, 11)),
+    CoverageVersion('6.4.3', 7, (3, 7), (3, 11)),
     CoverageVersion('4.5.4', 0, (2, 6), (3, 6)),
 )
 """
@@ -139,15 +139,15 @@ def get_sqlite_schema_version(path: str) -> int:
 
 
 def cover_python(
-        args,  # type: TestConfig
-        python,  # type: PythonConfig
-        cmd,  # type: t.List[str]
-        target_name,  # type: str
-        env,  # type: t.Dict[str, str]
-        capture,  # type: bool
-        data=None,  # type: t.Optional[str]
-        cwd=None,  # type: t.Optional[str]
-):  # type: (...) -> t.Tuple[t.Optional[str], t.Optional[str]]
+        args: TestConfig,
+        python: PythonConfig,
+        cmd: list[str],
+        target_name: str,
+        env: dict[str, str],
+        capture: bool,
+        data: t.Optional[str] = None,
+        cwd: t.Optional[str] = None,
+) -> tuple[t.Optional[str], t.Optional[str]]:
     """Run a command while collecting Python code coverage."""
     if args.coverage:
         env.update(get_coverage_environment(args, target_name, python.version))
@@ -155,7 +155,7 @@ def cover_python(
     return intercept_python(args, python, cmd, env, capture, data, cwd)
 
 
-def get_coverage_platform(config):  # type: (HostConfig) -> str
+def get_coverage_platform(config: HostConfig) -> str:
     """Return the platform label for the given host config."""
     if isinstance(config, PosixRemoteConfig):
         platform = f'remote-{sanitize_host_name(config.name)}'
@@ -172,10 +172,10 @@ def get_coverage_platform(config):  # type: (HostConfig) -> str
 
 
 def get_coverage_environment(
-        args,  # type: TestConfig
-        target_name,  # type: str
-        version,  # type: str
-):  # type: (...) -> t.Dict[str, str]
+        args: TestConfig,
+        target_name: str,
+        version: str,
+) -> dict[str, str]:
     """Return environment variables needed to collect code coverage."""
     # unit tests, sanity tests and other special cases (localhost only)
     # config is in a temporary directory
@@ -203,7 +203,7 @@ def get_coverage_environment(
     return env
 
 
-def get_coverage_config(args):  # type: (TestConfig) -> str
+def get_coverage_config(args: TestConfig) -> str:
     """Return the path to the coverage config, creating the config if it does not already exist."""
     try:
         return get_coverage_config.path  # type: ignore[attr-defined]
@@ -228,7 +228,7 @@ def get_coverage_config(args):  # type: (TestConfig) -> str
     return path
 
 
-def generate_coverage_config(args):  # type: (TestConfig) -> str
+def generate_coverage_config(args: TestConfig) -> str:
     """Generate code coverage configuration for tests."""
     if data_context().content.collection:
         coverage_config = generate_collection_coverage_config(args)
@@ -238,7 +238,7 @@ def generate_coverage_config(args):  # type: (TestConfig) -> str
     return coverage_config
 
 
-def generate_ansible_coverage_config():  # type: () -> str
+def generate_ansible_coverage_config() -> str:
     """Generate code coverage configuration for Ansible tests."""
     coverage_config = '''
 [run]
@@ -259,7 +259,7 @@ omit =
     return coverage_config
 
 
-def generate_collection_coverage_config(args):  # type: (TestConfig) -> str
+def generate_collection_coverage_config(args: TestConfig) -> str:
     """Generate code coverage configuration for Ansible Collection tests."""
     coverage_config = '''
 [run]

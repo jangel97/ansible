@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import collections.abc as c
 import typing as t
 
 from ....commands.coverage.xml import (
@@ -19,16 +20,16 @@ from ...environments import (
 
 def do_xml(
         subparsers,
-        parent,  # type: argparse.ArgumentParser
-        add_coverage_common,  # type: t.Callable[[argparse.ArgumentParser], None]
-        completer,  # type: CompositeActionCompletionFinder
-):  # type: (...) -> None
+        parent: argparse.ArgumentParser,
+        add_coverage_common: c.Callable[[argparse.ArgumentParser], None],
+        completer: CompositeActionCompletionFinder,
+) -> None:
     """Command line parsing for the `coverage xml` command."""
-    parser = subparsers.add_parser(
+    parser: argparse.ArgumentParser = subparsers.add_parser(
         'xml',
         parents=[parent],
         help='generate xml coverage report',
-    )  # type: argparse.ArgumentParser
+    )
 
     parser.set_defaults(
         func=command_coverage_xml,

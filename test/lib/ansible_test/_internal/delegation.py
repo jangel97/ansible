@@ -1,11 +1,16 @@
 """Delegate test execution to another environment."""
 from __future__ import annotations
 
+import collections.abc as c
 import contextlib
 import json
 import os
 import tempfile
 import typing as t
+
+from .locale_util import (
+    STANDARD_LOCALE,
+)
 
 from .io import (
     make_dirs,
@@ -68,9 +73,13 @@ from .provisioning import (
     HostState,
 )
 
+from .content_config import (
+    serialize_content_config,
+)
+
 
 @contextlib.contextmanager
-def delegation_context(args, host_state):  # type: (EnvironmentConfig, HostState) -> t.Iterator[None]
+def delegation_context(args: EnvironmentConfig, host_state: HostState) -> c.Iterator[None]:
     """Context manager for serialized host state during delegation."""
     make_dirs(ResultType.TMP.path)
 
@@ -81,6 +90,7 @@ def delegation_context(args, host_state):  # type: (EnvironmentConfig, HostState
     with tempfile.TemporaryDirectory(prefix='host-', dir=ResultType.TMP.path) as host_dir:
         args.host_settings.serialize(os.path.join(host_dir, 'settings.dat'))
         host_state.serialize(os.path.join(host_dir, 'state.dat'))
+        serialize_content_config(args, os.path.join(host_dir, 'config.dat'))
 
         args.host_path = os.path.join(ResultType.TMP.relative_path, os.path.basename(host_dir))
 
@@ -90,7 +100,7 @@ def delegation_context(args, host_state):  # type: (EnvironmentConfig, HostState
             args.host_path = None
 
 
-def delegate(args, host_state, exclude, require):  # type: (CommonConfig, HostState, t.List[str], t.List[str]) -> None
+def delegate(args: CommonConfig, host_state: HostState, exclude: list[str], require: list[str]) -> None:
     """Delegate execution of ansible-test to another environment."""
     assert isinstance(args, EnvironmentConfig)
 
@@ -112,7 +122,7 @@ def delegate(args, host_state, exclude, require):  # type: (CommonConfig, HostSt
             delegate_command(args, host_state, exclude, require)
 
 
-def delegate_command(args, host_state, exclude, require):  # type: (EnvironmentConfig, HostState, t.List[str], t.List[str]) -> None
+def delegate_command(args: EnvironmentConfig, host_state: HostState, exclude: list[str], require: list[str]) -> None:
     """Delegate execution based on the provided host state."""
     con = host_state.controller_profile.get_origin_controller_connection()
     working_directory = host_state.controller_profile.get_working_directory()
@@ -218,7 +228,7 @@ def insert_options(command, options):
     return result
 
 
-def download_results(args, con, content_root, success):  # type: (EnvironmentConfig, Connection, str, bool) -> None
+def download_results(args: EnvironmentConfig, con: Connection, content_root: str, success: bool) -> None:
     """Download results from a delegated controller."""
     remote_results_root = os.path.join(content_root, data_context().content.results_path)
     local_test_root = os.path.dirname(os.path.join(data_context().content.root, data_context().content.results_path))
@@ -245,23 +255,18 @@ def download_results(args, con, content_root, success):  # type: (EnvironmentCon
 
 
 def generate_command(
-        args,  # type: EnvironmentConfig
-        python,  # type: PythonConfig
-        ansible_bin_path,  # type: str
-        content_root,  # type: str
-        exclude,  # type: t.List[str]
-        require,  # type: t.List[str]
-):  # type: (...) -> t.List[str]
+        args: EnvironmentConfig,
+        python: PythonConfig,
+        ansible_bin_path: str,
+        content_root: str,
+        exclude: list[str],
+        require: list[str],
+) -> list[str]:
     """Generate the command necessary to delegate ansible-test."""
     cmd = [os.path.join(ansible_bin_path, 'ansible-test')]
     cmd = [python.path] + cmd
 
-    # Force the encoding used during delegation.
-    # This is only needed because ansible-test relies on Python's file system encoding.
-    # Environments that do not have the locale configured are thus unable to work with unicode file paths.
-    # Examples include FreeBSD and some Linux containers.
     env_vars = dict(
-        LC_ALL='en_US.UTF-8',
         ANSIBLE_TEST_CONTENT_ROOT=content_root,
     )
 
@@ -275,6 +280,14 @@ def generate_command(
 
         env_vars.update(
             PYTHONPATH=library_path,
+        )
+    else:
+        # When delegating to a host other than the origin, the locale must be explicitly set.
+        # Setting of the locale for the origin host is handled by common_environment().
+        # Not all connections support setting the locale, and for those that do, it isn't guaranteed to work.
+        # This is needed to make sure the delegated environment is configured for UTF-8 before running Python.
+        env_vars.update(
+            LC_ALL=STANDARD_LOCALE,
         )
 
     # Propagate the TERM environment variable to the remote host when using the shell command.
@@ -294,11 +307,11 @@ def generate_command(
 
 
 def filter_options(
-        args,  # type: EnvironmentConfig
-        argv,  # type: t.List[str]
-        exclude,  # type: t.List[str]
-        require,  # type: t.List[str]
-):  # type: (...) -> t.Iterable[str]
+        args: EnvironmentConfig,
+        argv: list[str],
+        exclude: list[str],
+        require: list[str],
+) -> c.Iterable[str]:
     """Return an iterable that filters out unwanted CLI options and injects new ones as requested."""
     replace: list[tuple[str, int, t.Optional[t.Union[bool, str, list[str]]]]] = [
         ('--docker-no-pull', 0, False),

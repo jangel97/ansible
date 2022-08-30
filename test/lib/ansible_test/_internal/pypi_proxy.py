@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import atexit
 import os
-import typing as t
 import urllib.parse
 
 from .io import (
@@ -50,12 +49,12 @@ from .inventory import (
 )
 
 
-def run_pypi_proxy(args, targets_use_pypi):  # type: (EnvironmentConfig, bool) -> None
+def run_pypi_proxy(args: EnvironmentConfig, targets_use_pypi: bool) -> None:
     """Run a PyPI proxy support container."""
     if args.pypi_endpoint:
         return  # user has overridden the proxy endpoint, there is nothing to provision
 
-    versions_needing_proxy = tuple()  # type: t.Tuple[str, ...]  # preserved for future use, no versions currently require this
+    versions_needing_proxy: tuple[str, ...] = tuple()  # preserved for future use, no versions currently require this
     posix_targets = [target for target in args.targets if isinstance(target, PosixConfig)]
     need_proxy = targets_use_pypi and any(target.python.version in versions_needing_proxy for target in posix_targets)
     use_proxy = args.pypi_proxy or need_proxy
@@ -82,7 +81,7 @@ def run_pypi_proxy(args, targets_use_pypi):  # type: (EnvironmentConfig, bool) -
     )
 
 
-def configure_pypi_proxy(args, profile):  # type: (EnvironmentConfig, HostProfile) -> None
+def configure_pypi_proxy(args: EnvironmentConfig, profile: HostProfile) -> None:
     """Configure the environment to use a PyPI proxy, if present."""
     if args.pypi_endpoint:
         pypi_endpoint = args.pypi_endpoint
@@ -108,13 +107,13 @@ def configure_pypi_proxy(args, profile):  # type: (EnvironmentConfig, HostProfil
         configure_target_pypi_proxy(args, profile, pypi_endpoint, pypi_hostname)
 
 
-def configure_controller_pypi_proxy(args, profile, pypi_endpoint, pypi_hostname):  # type: (EnvironmentConfig, HostProfile, str, str) -> None
+def configure_controller_pypi_proxy(args: EnvironmentConfig, profile: HostProfile, pypi_endpoint: str, pypi_hostname: str) -> None:
     """Configure the controller environment to use a PyPI proxy."""
     configure_pypi_proxy_pip(args, profile, pypi_endpoint, pypi_hostname)
     configure_pypi_proxy_easy_install(args, profile, pypi_endpoint)
 
 
-def configure_target_pypi_proxy(args, profile, pypi_endpoint, pypi_hostname):  # type: (EnvironmentConfig, HostProfile, str, str) -> None
+def configure_target_pypi_proxy(args: EnvironmentConfig, profile: HostProfile, pypi_endpoint: str, pypi_hostname: str) -> None:
     """Configure the target environment to use a PyPI proxy."""
     inventory_path = process_scoped_temporary_file(args)
 
@@ -132,7 +131,7 @@ def configure_target_pypi_proxy(args, profile, pypi_endpoint, pypi_hostname):  #
     atexit.register(cleanup_pypi_proxy)
 
 
-def configure_pypi_proxy_pip(args, profile, pypi_endpoint, pypi_hostname):  # type: (EnvironmentConfig, HostProfile, str, str) -> None
+def configure_pypi_proxy_pip(args: EnvironmentConfig, profile: HostProfile, pypi_endpoint: str, pypi_hostname: str) -> None:
     """Configure a custom index for pip based installs."""
     pip_conf_path = os.path.expanduser('~/.pip/pip.conf')
     pip_conf = '''
@@ -141,7 +140,7 @@ index-url = {0}
 trusted-host = {1}
 '''.format(pypi_endpoint, pypi_hostname).strip()
 
-    def pip_conf_cleanup():  # type: () -> None
+    def pip_conf_cleanup() -> None:
         """Remove custom pip PyPI config."""
         display.info('Removing custom PyPI config: %s' % pip_conf_path, verbosity=1)
         os.remove(pip_conf_path)
@@ -157,7 +156,7 @@ trusted-host = {1}
         atexit.register(pip_conf_cleanup)
 
 
-def configure_pypi_proxy_easy_install(args, profile, pypi_endpoint):  # type: (EnvironmentConfig, HostProfile, str) -> None
+def configure_pypi_proxy_easy_install(args: EnvironmentConfig, profile: HostProfile, pypi_endpoint: str) -> None:
     """Configure a custom index for easy_install based installs."""
     pydistutils_cfg_path = os.path.expanduser('~/.pydistutils.cfg')
     pydistutils_cfg = '''
@@ -168,7 +167,7 @@ index_url = {0}
     if os.path.exists(pydistutils_cfg_path) and not profile.config.is_managed:
         raise ApplicationError('Refusing to overwrite existing file: %s' % pydistutils_cfg_path)
 
-    def pydistutils_cfg_cleanup():  # type: () -> None
+    def pydistutils_cfg_cleanup() -> None:
         """Remove custom PyPI config."""
         display.info('Removing custom PyPI config: %s' % pydistutils_cfg_path, verbosity=1)
         os.remove(pydistutils_cfg_path)
